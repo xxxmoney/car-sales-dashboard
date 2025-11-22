@@ -4,12 +4,10 @@ import pandas as pd
 from src.data_loader import DataLoader
 
 # --- 1. Initialization ---
-# Load CSS (Simple Grid System)
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = Dash(__name__, external_stylesheets=external_stylesheets)
-server = app.server  # Expose server for deployment
+server = app.server
 
-# Load Data once at startup
 loader = DataLoader()
 df = loader.load_data()
 brands = loader.get_brands()
@@ -38,9 +36,7 @@ app.layout = html.Div([
                 multi=True,
                 placeholder="Select brands..."
             ),
-
             html.Br(),
-
             html.Label("Production Year:"),
             dcc.RangeSlider(
                 id='filter-year',
@@ -48,9 +44,7 @@ app.layout = html.Div([
                 marks={i: str(i) for i in range(min_year, max_year + 1, 2)},
                 value=[min_year, max_year]
             ),
-
             html.Br(),
-
             html.Label("Fuel Type:"),
             dcc.Dropdown(
                 id='filter-fuel',
@@ -58,17 +52,14 @@ app.layout = html.Div([
                 multi=True,
                 placeholder="All fuels"
             ),
-
             html.Br(),
-
             html.Label("Transmission:"),
             dcc.Checklist(
                 id='filter-gear',
                 options=[{'label': g, 'value': g} for g in df['gear'].unique()],
-                value=[g for g in df['gear'].unique()],  # Default: All selected
+                value=[g for g in df['gear'].unique()],
                 inline=True
             )
-
         ], className="four columns", style={'padding': '20px', 'backgroundColor': '#f9f9f9', 'borderRadius': '5px'}),
 
         # --- Right Content (Graphs) ---
@@ -81,17 +72,28 @@ app.layout = html.Div([
                 html.Div([html.H6("Avg Mileage"), html.H3(id='kpi-mileage')], className="four columns box"),
             ], className="row", style={'textAlign': 'center', 'marginBottom': '20px'}),
 
-            # Row 1: Scatter Plot
-            dcc.Graph(id='graph-scatter'),
+            # Loading Wrapper for better UX
+            dcc.Loading(
+                id="loading-graphs",
+                type="default",
+                children=[
+                    # Row 1: Scatter Plot
+                    dcc.Graph(id='graph-scatter'),
 
-            # Row 2: Bar & Pie
-            html.Div([
-                html.Div([dcc.Graph(id='graph-bar')], className="eight columns"),
-                html.Div([dcc.Graph(id='graph-pie')], className="four columns"),
-            ], className="row"),
+                    # Row 2: Box Plot (Price Analytics) & Pie Chart
+                    html.Div([
+                        # Box Plot is great for analytics - shows median, range and outliers
+                        html.Div([dcc.Graph(id='graph-box')], className="eight columns"),
+                        html.Div([dcc.Graph(id='graph-pie')], className="four columns"),
+                    ], className="row"),
 
-            # Row 3: Heatmap
-            dcc.Graph(id='graph-heatmap')
+                    # Row 3: Histogram (Distribution) & Heatmap
+                    html.Div([
+                        html.Div([dcc.Graph(id='graph-histogram')], className="six columns"),
+                        html.Div([dcc.Graph(id='graph-heatmap')], className="six columns"),
+                    ], className="row"),
+                ]
+            )
 
         ], className="eight columns")
 
@@ -101,32 +103,23 @@ app.layout = html.Div([
 
 # --- 3. Interaction Logic (Controller) ---
 @app.callback(
-    # Outputs (What we update)
     [Output('kpi-count', 'children'),
      Output('kpi-price', 'children'),
      Output('kpi-mileage', 'children'),
      Output('graph-scatter', 'figure'),
-     Output('graph-bar', 'figure'),
+     Output('graph-box', 'figure'),  # Changed from graph-bar
      Output('graph-pie', 'figure'),
+     Output('graph-histogram', 'figure'),  # New Histogram
      Output('graph-heatmap', 'figure')],
-    # Inputs (Triggers from UI)
     [Input('filter-brand', 'value'),
      Input('filter-year', 'value'),
      Input('filter-fuel', 'value'),
      Input('filter-gear', 'value')]
 )
 def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears):
-    """
-    Reactive function: Runs every time an input changes
-    Filters data and regenerates all figures
-    """
-    # Filter Data
+    # A. Filter Data
     dff = df.copy()
-
-    # Filter by Year Slider
     dff = dff[(dff['year'] >= year_range[0]) & (dff['year'] <= year_range[1])]
-
-    # Filter by Dropdowns (if anything is selected)
     if selected_brands:
         dff = dff[dff['make'].isin(selected_brands)]
     if selected_fuels:
@@ -134,20 +127,18 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
     if selected_gears:
         dff = dff[dff['gear'].isin(selected_gears)]
 
-    # Handle Empty Data (Edge case)
+    # B. Handle Empty Data
     if dff.empty:
-        # Return safe defaults to avoid errors
-        return "0", "0 €", "0 km", {}, {}, {}, {}
+        return "0", "0 €", "0 km", {}, {}, {}, {}, {}
 
-    # Calculate KPIs
+    # C. KPIs
     kpi_count = f"{len(dff)}"
     kpi_price = f"{dff['price'].mean():,.0f} €"
     kpi_mileage = f"{dff['mileage'].mean():,.0f} km"
 
-    # Generate Graphs (Plotly Express)
+    # D. Graphs
 
-    # Scatter: Price vs Mileage (colored by Brand or Fuel if many brands)
-    # We limit points for performance if dataset is huge, but 46k is okay for modern browsers
+    # 1. Scatter: Price vs Mileage
     fig_scatter = px.scatter(
         dff, x='mileage', y='price', color='fuel',
         title='Price vs. Mileage Correlation',
@@ -155,32 +146,37 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
         opacity=0.6
     )
 
-    # Bar: Most Expensive Brands
-    avg_price_brands = dff.groupby('make')['price'].mean().reset_index().sort_values('price', ascending=False).head(10)
-    fig_bar = px.bar(
-        avg_price_brands, x='make', y='price',
-        title='Most Expensive Brands (Avg)',
-        labels={'price': 'Avg Price (€)', 'make': 'Brand'},
-        color='price'
+    # 2. Box Plot: Price Analysis by Brand (Analytics)
+    # Instead of just average, we see the full spread of prices
+    fig_box = px.box(
+        dff, x='make', y='price',
+        title='Price Distribution by Brand (Box Plot)',
+        points="outliers"  # Only show outliers as points to avoid clutter
     )
 
-    # Pie: Transmission Share
+    # 3. Pie: Transmission
     fig_pie = px.pie(
         dff, names='gear',
-        title='Transmission Distribution',
-        hole=0.4  # Donut chart style
+        title='Transmission Share',
+        hole=0.4
     )
 
-    # Heatmap: Correlation Matrix
-    # Shows relationships between numerical variables
+    # 4. Histogram: Price Distribution (Analytics)
+    # Shows if prices are skewed (e.g. mostly cheap cars)
+    fig_hist = px.histogram(
+        dff, x="price", nbins=50,
+        title="Price Frequency Distribution",
+        color_discrete_sequence=['#636EFA']
+    )
+
+    # 5. Heatmap: Correlation
     numeric_cols = ['price', 'mileage', 'hp', 'year']
     corr_matrix = dff[numeric_cols].corr()
     fig_heatmap = px.imshow(
         corr_matrix,
-        text_auto=True,
-        aspect="auto",
-        title='Variable Correlation Matrix',
-        color_continuous_scale='RdBu_r'  # Red-Blue diverging
+        text_auto=True, aspect="auto",
+        title='Correlation Matrix',
+        color_continuous_scale='RdBu_r'
     )
 
-    return kpi_count, kpi_price, kpi_mileage, fig_scatter, fig_bar, fig_pie, fig_heatmap
+    return kpi_count, kpi_price, kpi_mileage, fig_scatter, fig_box, fig_pie, fig_hist, fig_heatmap
