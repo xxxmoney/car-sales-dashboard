@@ -3,7 +3,7 @@ import plotly.express as px
 import pandas as pd
 from src.data_loader import DataLoader
 
-# --- 1. Initialization ---
+# --- Initialization ---
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
@@ -13,7 +13,7 @@ df = loader.load_data()
 brands = loader.get_brands()
 min_year, max_year = loader.get_year_range()
 
-# --- 2. Layout (The View) ---
+# --- Layout (The View) ---
 app.layout = html.Div([
 
     # Header
@@ -101,7 +101,7 @@ app.layout = html.Div([
 ])
 
 
-# --- 3. Interaction Logic (Controller) ---
+# --- Interaction Logic (Controller) ---
 @app.callback(
     [Output('kpi-count', 'children'),
      Output('kpi-price', 'children'),
@@ -117,7 +117,7 @@ app.layout = html.Div([
      Input('filter-gear', 'value')]
 )
 def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears):
-    # A. Filter Data
+    # Filter Data
     dff = df.copy()
     dff = dff[(dff['year'] >= year_range[0]) & (dff['year'] <= year_range[1])]
     if selected_brands:
@@ -127,18 +127,18 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
     if selected_gears:
         dff = dff[dff['gear'].isin(selected_gears)]
 
-    # B. Handle Empty Data
+    # Handle Empty Data
     if dff.empty:
         return "0", "0 €", "0 km", {}, {}, {}, {}, {}
 
-    # C. KPIs
+    # KPIs
     kpi_count = f"{len(dff)}"
     kpi_price = f"{dff['price'].mean():,.0f} €"
     kpi_mileage = f"{dff['mileage'].mean():,.0f} km"
 
-    # D. Graphs
+    # Graphs
 
-    # 1. Scatter: Price vs Mileage
+    # Scatter: Price vs Mileage
     fig_scatter = px.scatter(
         dff, x='mileage', y='price', color='fuel',
         title='Price vs. Mileage Correlation',
@@ -146,7 +146,7 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
         opacity=0.6
     )
 
-    # 2. Box Plot: Price Analysis by Brand (Analytics)
+    # Box Plot: Price Analysis by Brand (Analytics)
     # Instead of just average, we see the full spread of prices
     fig_box = px.box(
         dff, x='make', y='price',
@@ -154,14 +154,14 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
         points="outliers"  # Only show outliers as points to avoid clutter
     )
 
-    # 3. Pie: Transmission
+    # Pie: Transmission
     fig_pie = px.pie(
         dff, names='gear',
         title='Transmission Share',
         hole=0.4
     )
 
-    # 4. Histogram: Price Distribution (Analytics)
+    # Histogram: Price Distribution (Analytics)
     # Shows if prices are skewed (e.g. mostly cheap cars)
     fig_hist = px.histogram(
         dff, x="price", nbins=50,
@@ -169,7 +169,7 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
         color_discrete_sequence=['#636EFA']
     )
 
-    # 5. Heatmap: Correlation
+    # Heatmap: Correlation
     numeric_cols = ['price', 'mileage', 'hp', 'year']
     corr_matrix = dff[numeric_cols].corr()
     fig_heatmap = px.imshow(
