@@ -155,11 +155,11 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
         opacity=0.6
     )
 
-    # Bar: Top 10 Expensive Brands
+    # Bar: Most Expensive Brands
     avg_price_brands = dff.groupby('make')['price'].mean().reset_index().sort_values('price', ascending=False).head(10)
     fig_bar = px.bar(
         avg_price_brands, x='make', y='price',
-        title='Top 10 Most Expensive Brands (Avg)',
+        title='Most Expensive Brands (Avg)',
         labels={'price': 'Avg Price (€)', 'make': 'Brand'},
         color='price'
     )
