@@ -1,3 +1,4 @@
+from src.app import app
 
-# Sample test print
-print('Test')
+if __name__ == '__main__':
+    app.run(debug=True, port=8050)
