@@ -24,9 +24,10 @@ class DataLoader:
         self.df.dropna(subset=['gear'], inplace=True)
         # Note - other columns don't have NaNs, so just exclude them only from these specified
 
+        # TODO: check which values to filter out
         # Filter out extreme price outliers
         # Keep reasonable range e.g., 500 EUR to 500k EUR
-        self.df = self.df[(self.df['price'] > 500) & (self.df['price'] < 500000)]
+        # self.df = self.df[(self.df['price'] > 500) & (self.df['price'] < 500000)]
 
         # Convert year to int (sometimes read as float)
         self.df['year'] = self.df['year'].astype(int)
