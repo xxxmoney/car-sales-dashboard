@@ -1,14 +1,15 @@
 import plotly.express as px
+import plotly.graph_objects as go
 import pandas as pd
 
 COMMON_TEMPLATE = 'plotly_white'
 COLOR_SEQ = ['#636EFA']
 
 
-def create_scatter_chart(df: pd.DataFrame) -> dict:
+def create_scatter_chart(df: pd.DataFrame) -> go.Figure:
     """Creates Price vs. Mileage scatter plot."""
     if df.empty:
-        return {}
+        return go.Figure()
 
     # Reset index to make sure we can pass it as a column
     df_reset = df.reset_index()
@@ -16,33 +17,32 @@ def create_scatter_chart(df: pd.DataFrame) -> dict:
     fig = px.scatter(
         df_reset, x='mileage', y='price', color='fuel',
         title='Price vs. Mileage Correlation (Click for details)',
-        # Custom data indices for hovertemplate:
         # 0=index, 1=make, 2=model, 3=year, 4=hp
         custom_data=['index', 'make', 'model', 'year', 'hp'],
         opacity=0.6,
         template=COMMON_TEMPLATE
     )
 
-    # --- FIX: Custom Hover Tooltip ---
     fig.update_traces(
         hovertemplate=(
-                "<b>%{customdata[1]} %{customdata[2]}</b><br>" +  # Bold Make + Model
-                "Price: %{y:,.0f} €<br>" +  # Format Price (comma separator)
-                "Mileage: %{x:,.0f} km<br>" +  # Format Mileage
-                "Year: %{customdata[3]}<br>" +  # Year
-                "Power: %{customdata[4]} HP"  # HP
-                "<extra></extra>"  # Hides the secondary box (trace name)
+                "<b>%{customdata[1]} %{customdata[2]}</b><br>" +
+                "Price: %{y:,.0f} €<br>" +
+                "Mileage: %{x:,.0f} km<br>" +
+                "Year: %{customdata[3]}<br>" +
+                "Power: %{customdata[4]} HP"
+                "<extra></extra>"
         )
     )
 
     fig.update_layout(clickmode='event+select')
-
     return fig
 
 
-def create_box_plot(df: pd.DataFrame) -> dict:
+def create_box_plot(df: pd.DataFrame) -> go.Figure:
     """Creates Price Distribution by Brand box plot."""
-    if df.empty: return {}
+    if df.empty:
+        return go.Figure()
+
     fig = px.box(
         df, x='make', y='price',
         title='Price Distribution by Brand',
@@ -52,9 +52,11 @@ def create_box_plot(df: pd.DataFrame) -> dict:
     return fig
 
 
-def create_pie_chart(df: pd.DataFrame) -> dict:
+def create_pie_chart(df: pd.DataFrame) -> go.Figure:
     """Creates Transmission share pie chart."""
-    if df.empty: return {}
+    if df.empty:
+        return go.Figure()
+
     fig = px.pie(
         df, names='gear',
         title='Transmission Share',
@@ -65,9 +67,11 @@ def create_pie_chart(df: pd.DataFrame) -> dict:
     return fig
 
 
-def create_histogram(df: pd.DataFrame) -> dict:
+def create_histogram(df: pd.DataFrame) -> go.Figure:
     """Creates Price frequency distribution histogram."""
-    if df.empty: return {}
+    if df.empty:
+        return go.Figure()
+
     fig = px.histogram(
         df, x="price", nbins=50,
         title="Price Distribution",
@@ -77,16 +81,17 @@ def create_histogram(df: pd.DataFrame) -> dict:
     return fig
 
 
-def create_heatmap(df: pd.DataFrame) -> dict:
+def create_heatmap(df: pd.DataFrame) -> go.Figure:
     """Creates Correlation Matrix heatmap."""
-    if df.empty: return {}
+    if df.empty:
+        return go.Figure()
 
     numeric_cols = ['price', 'mileage', 'hp', 'year']
     corr = df[numeric_cols].corr()
 
     fig = px.imshow(
         corr,
-        text_auto='.2f',  # Show 2 decimal places
+        text_auto='.2f',
         aspect="auto",
         title='Correlation Matrix',
         color_continuous_scale='RdBu_r',
