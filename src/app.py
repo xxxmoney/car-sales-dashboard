@@ -1,8 +1,8 @@
 from dash import Dash, html, dcc, Input, Output
 import dash_bootstrap_components as dbc
-import plotly.express as px
 import pandas as pd
 from src.data_loader import DataLoader
+import src.charts as charts
 
 # --- Initialization ---
 external_stylesheets = [dbc.themes.FLATLY]
@@ -56,7 +56,7 @@ app.layout = dbc.Container([
                         )
                     ], className="mb-3"),
 
-                    # Fuel Filter (Added mb-4 for extra space before Transmission)
+                    # Fuel Filter
                     html.Div([
                         html.Label("Fuel Type:", className="fw-bold mb-1"),
                         dcc.Dropdown(
@@ -177,43 +177,12 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
     kpi_price = f"{data_copy['price'].mean():,.0f} €"
     kpi_mileage = f"{data_copy['mileage'].mean():,.0f} km"
 
-    # Common template for consistent look
-    common_template = 'plotly_white'
-
     # Graphs
-    scatter_price_mileage = px.scatter(
-        data_copy, x='mileage', y='price', color='fuel',
-        title='Price vs. Mileage Correlation',
-        hover_data=['make', 'model', 'year', 'hp'],
-        opacity=0.6, template=common_template
-    )
-    scatter_price_mileage.update_layout(autosize=True, margin=dict(l=20, r=20, t=40, b=20))
-
-    box_price_brand = px.box(
-        data_copy, x='make', y='price',
-        title='Price Distribution by Brand (Box Plot)',
-        points="outliers", template=common_template
-    )
-
-    pie_transmission = px.pie(
-        data_copy, names='gear',
-        title='Transmission Share',
-        hole=0.4, template=common_template
-    )
-
-    histogram_price = px.histogram(
-        data_copy, x="price", nbins=50,
-        title="Price Frequency Distribution",
-        color_discrete_sequence=['#636EFA'], template=common_template
-    )
-
-    numeric_columns = ['price', 'mileage', 'hp', 'year']
-    correlation_matrix = data_copy[numeric_columns].corr()
-    heatmap_numeric_columns = px.imshow(
-        correlation_matrix,
-        text_auto=True, aspect="auto",
-        title='Correlation Matrix',
-        color_continuous_scale='RdBu_r', template=common_template
-    )
+    # Using the charts module to generate figures, keeping your variable names
+    scatter_price_mileage = charts.create_scatter_chart(data_copy)
+    box_price_brand = charts.create_box_plot(data_copy)
+    pie_transmission = charts.create_pie_chart(data_copy)
+    histogram_price = charts.create_histogram(data_copy)
+    heatmap_numeric_columns = charts.create_heatmap(data_copy)
 
     return kpi_count, kpi_price, kpi_mileage, scatter_price_mileage, box_price_brand, pie_transmission, histogram_price, heatmap_numeric_columns
