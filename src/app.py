@@ -9,7 +9,7 @@ app = Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
 
 loader = DataLoader()
-df = loader.load_data()
+data = loader.load_data()
 brands = loader.get_brands()
 min_year, max_year = loader.get_year_range()
 
@@ -36,7 +36,9 @@ app.layout = html.Div([
                 multi=True,
                 placeholder="Select brands..."
             ),
+
             html.Br(),
+
             html.Label("Production Year:"),
             dcc.RangeSlider(
                 id='filter-year',
@@ -44,52 +46,56 @@ app.layout = html.Div([
                 marks={i: str(i) for i in range(min_year, max_year + 1, 2)},
                 value=[min_year, max_year]
             ),
+
             html.Br(),
+
             html.Label("Fuel Type:"),
             dcc.Dropdown(
                 id='filter-fuel',
-                options=[{'label': f, 'value': f} for f in df['fuel'].unique()],
+                options=[{'label': f, 'value': f} for f in data['fuel'].unique()],
                 multi=True,
                 placeholder="All fuels"
             ),
+
             html.Br(),
+
             html.Label("Transmission:"),
             dcc.Checklist(
                 id='filter-gear',
-                options=[{'label': g, 'value': g} for g in df['gear'].unique()],
-                value=[g for g in df['gear'].unique()],
+                options=[{'label': g, 'value': g} for g in data['gear'].unique()],
+                value=[g for g in data['gear'].unique()],
                 inline=True
             )
         ], className="four columns", style={'padding': '20px', 'backgroundColor': '#f9f9f9', 'borderRadius': '5px'}),
 
         # --- Right Content (Graphs) ---
         html.Div([
-
-            # KPI Cards
-            html.Div([
-                html.Div([html.H6("Total Cars"), html.H3(id='kpi-count')], className="four columns box"),
-                html.Div([html.H6("Avg Price"), html.H3(id='kpi-price')], className="four columns box"),
-                html.Div([html.H6("Avg Mileage"), html.H3(id='kpi-mileage')], className="four columns box"),
-            ], className="row", style={'textAlign': 'center', 'marginBottom': '20px'}),
-
-            # Loading Wrapper for better UX
             dcc.Loading(
-                id="loading-graphs",
+                id="loading-data",
                 type="default",
                 children=[
-                    # Row 1: Scatter Plot
+                    # KPI Cards
+                    html.Div([
+                        html.Div([html.H6("Total Cars"), html.H3(id='kpi-count')], className="four columns box"),
+                        html.Div([html.H6("Avg Price"), html.H3(id='kpi-price')], className="four columns box"),
+                        html.Div([html.H6("Avg Mileage"), html.H3(id='kpi-mileage')], className="four columns box"),
+                    ], className="row", style={'textAlign': 'center', 'marginBottom': '20px'}),
+
+                    # Scatter: Price vs Mileage
                     dcc.Graph(id='graph-scatter'),
 
-                    # Row 2: Box Plot (Price Analytics) & Pie Chart
+                    #
                     html.Div([
-                        # Box Plot is great for analytics - shows median, range and outliers
+                        # Box Plot: Price Analysis by Brand
                         html.Div([dcc.Graph(id='graph-box')], className="eight columns"),
+                        # Pie: Transmission
                         html.Div([dcc.Graph(id='graph-pie')], className="four columns"),
                     ], className="row"),
 
-                    # Row 3: Histogram (Distribution) & Heatmap
                     html.Div([
+                        # Histogram: Price Distribution
                         html.Div([dcc.Graph(id='graph-histogram')], className="six columns"),
+                        # Heatmap: Correlation (price, mileage, hp, year)
                         html.Div([dcc.Graph(id='graph-heatmap')], className="six columns"),
                     ], className="row"),
                 ]
@@ -101,15 +107,15 @@ app.layout = html.Div([
 ])
 
 
-# --- Interaction Logic (Controller) ---
+# --- App callback for data update ---
 @app.callback(
     [Output('kpi-count', 'children'),
      Output('kpi-price', 'children'),
      Output('kpi-mileage', 'children'),
      Output('graph-scatter', 'figure'),
-     Output('graph-box', 'figure'),  # Changed from graph-bar
+     Output('graph-box', 'figure'),
      Output('graph-pie', 'figure'),
-     Output('graph-histogram', 'figure'),  # New Histogram
+     Output('graph-histogram', 'figure'),
      Output('graph-heatmap', 'figure')],
     [Input('filter-brand', 'value'),
      Input('filter-year', 'value'),
@@ -118,65 +124,53 @@ app.layout = html.Div([
 )
 def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears):
     # Filter Data
-    dff = df.copy()
-    dff = dff[(dff['year'] >= year_range[0]) & (dff['year'] <= year_range[1])]
+    data_copy = data.copy()
+    data_copy = data_copy[(data_copy['year'] >= year_range[0]) & (data_copy['year'] <= year_range[1])]
     if selected_brands:
-        dff = dff[dff['make'].isin(selected_brands)]
+        data_copy = data_copy[data_copy['make'].isin(selected_brands)]
     if selected_fuels:
-        dff = dff[dff['fuel'].isin(selected_fuels)]
+        data_copy = data_copy[data_copy['fuel'].isin(selected_fuels)]
     if selected_gears:
-        dff = dff[dff['gear'].isin(selected_gears)]
+        data_copy = data_copy[data_copy['gear'].isin(selected_gears)]
 
     # Handle Empty Data
-    if dff.empty:
+    if data_copy.empty:
         return "0", "0 €", "0 km", {}, {}, {}, {}, {}
 
     # KPIs
-    kpi_count = f"{len(dff)}"
-    kpi_price = f"{dff['price'].mean():,.0f} €"
-    kpi_mileage = f"{dff['mileage'].mean():,.0f} km"
+    kpi_count = f"{len(data_copy)}"
+    kpi_price = f"{data_copy['price'].mean():,.0f} €"
+    kpi_mileage = f"{data_copy['mileage'].mean():,.0f} km"
 
     # Graphs
-
-    # Scatter: Price vs Mileage
-    fig_scatter = px.scatter(
-        dff, x='mileage', y='price', color='fuel',
+    scatter_price_mileage = px.scatter(
+        data_copy, x='mileage', y='price', color='fuel',
         title='Price vs. Mileage Correlation',
         hover_data=['make', 'model', 'year', 'hp'],
         opacity=0.6
     )
-
-    # Box Plot: Price Analysis by Brand (Analytics)
-    # Instead of just average, we see the full spread of prices
-    fig_box = px.box(
-        dff, x='make', y='price',
+    box_price_brand = px.box(
+        data_copy, x='make', y='price',
         title='Price Distribution by Brand (Box Plot)',
         points="outliers"  # Only show outliers as points to avoid clutter
     )
-
-    # Pie: Transmission
-    fig_pie = px.pie(
-        dff, names='gear',
+    pie_transmission = px.pie(
+        data_copy, names='gear',
         title='Transmission Share',
         hole=0.4
     )
-
-    # Histogram: Price Distribution (Analytics)
-    # Shows if prices are skewed (e.g. mostly cheap cars)
-    fig_hist = px.histogram(
-        dff, x="price", nbins=50,
+    histogram_price = px.histogram(
+        data_copy, x="price", nbins=50,
         title="Price Frequency Distribution",
         color_discrete_sequence=['#636EFA']
     )
-
-    # Heatmap: Correlation
-    numeric_cols = ['price', 'mileage', 'hp', 'year']
-    corr_matrix = dff[numeric_cols].corr()
-    fig_heatmap = px.imshow(
-        corr_matrix,
+    numeric_columns = ['price', 'mileage', 'hp', 'year']
+    correlation_matrix = data_copy[numeric_columns].corr()
+    heatmap_numeric_columns = px.imshow(
+        correlation_matrix,
         text_auto=True, aspect="auto",
         title='Correlation Matrix',
         color_continuous_scale='RdBu_r'
     )
 
-    return kpi_count, kpi_price, kpi_mileage, fig_scatter, fig_box, fig_pie, fig_hist, fig_heatmap
+    return kpi_count, kpi_price, kpi_mileage, scatter_price_mileage, box_price_brand, pie_transmission, histogram_price, heatmap_numeric_columns
