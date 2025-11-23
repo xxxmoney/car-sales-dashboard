@@ -14,7 +14,7 @@ data = loader.load_data()
 brands = loader.get_brands()
 min_year, max_year = loader.get_year_range()
 
-# --- Layout (The View) ---
+# Main Layout
 app.layout = dbc.Container([
 
     # Header
@@ -79,7 +79,7 @@ app.layout = dbc.Container([
                     html.Div([
                         html.Label("Transmission:", className="fw-bold mb-2"),
                         dcc.Checklist(
-                            id='filter-gear',
+                            id='filter-transmission',
                             options=[{'label': g, 'value': g} for g in data['gear'].unique()],
                             value=[g for g in data['gear'].unique()],
                             inline=True,
@@ -117,31 +117,31 @@ app.layout = dbc.Container([
 
                     dbc.Row([
                         dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id='graph-line')
+                            dcc.Graph(id='graph-line-price-year')
                         ]), className="shadow-sm border-0 h-100"), xs=12, lg=6, className="mb-4"),
 
                         dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id='graph-scatter')
+                            dcc.Graph(id='graph-scatter-price-mileage')
                         ]), className="shadow-sm border-0 h-100"), xs=12, lg=6, className="mb-4"),
                     ]),
 
                     dbc.Row([
                         dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id='graph-box')
+                            dcc.Graph(id='graph-box-price-brand')
                         ]), className="shadow-sm border-0 h-100"), xs=12, lg=8, className="mb-4"),
 
                         dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id='graph-pie')
+                            dcc.Graph(id='graph-pie-transmission')
                         ]), className="shadow-sm border-0 h-100"), xs=12, lg=4, className="mb-4"),
                     ]),
 
                     dbc.Row([
                         dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id='graph-histogram')
+                            dcc.Graph(id='graph-histogram-price')
                         ]), className="shadow-sm border-0 h-100"), xs=12, lg=6, className="mb-4"),
 
                         dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id='graph-heatmap')
+                            dcc.Graph(id='graph-heatmap-price-mileage-hp-year')
                         ]), className="shadow-sm border-0 h-100"), xs=12, lg=6, className="mb-4"),
                     ]),
                 ]
@@ -154,20 +154,22 @@ app.layout = dbc.Container([
 
 # --- Main Data Callback ---
 @app.callback(
+    # KPI and Graphs
     [Output('kpi-count', 'children'),
      Output('kpi-price', 'children'),
      Output('kpi-mileage', 'children'),
-     Output('graph-line', 'figure'),
-     Output('graph-scatter', 'figure'),
-     Output('graph-box', 'figure'),
-     Output('graph-pie', 'figure'),
-     Output('graph-histogram', 'figure'),
-     Output('graph-heatmap', 'figure')],
+     Output('graph-line-price-year', 'figure'),
+     Output('graph-scatter-price-mileage', 'figure'),
+     Output('graph-box-price-brand', 'figure'),
+     Output('graph-pie-transmission', 'figure'),
+     Output('graph-histogram-price', 'figure'),
+     Output('graph-heatmap-price-mileage-hp-year', 'figure')],
+
+    # Filters
     [Input('filter-brand', 'value'),
-     # Removed filter-model input
      Input('filter-year', 'value'),
      Input('filter-fuel', 'value'),
-     Input('filter-gear', 'value')]
+     Input('filter-transmission', 'value')]
 )
 def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears):
     dff = data.copy()
@@ -198,7 +200,7 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
 @app.callback(
     [Output("car-modal", "is_open"),
      Output("modal-body", "children")],
-    [Input("graph-scatter", "clickData"),
+    [Input("graph-scatter-price-mileage", "clickData"),
      Input("close-modal", "n_clicks")],
     [State("car-modal", "is_open")]
 )
@@ -207,7 +209,7 @@ def toggle_modal(clickData, n_clicks, is_open):
     if not ctx.triggered: return no_update, no_update
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    if trigger_id == "graph-scatter" and clickData:
+    if trigger_id == "graph-scatter-price-mileage" and clickData:
         try:
             car_id = clickData['points'][0]['customdata'][0]
             car_row = data.loc[car_id]

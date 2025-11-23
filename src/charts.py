@@ -13,7 +13,7 @@ def create_line_chart_price_year(data: pd.DataFrame) -> go.Figure:
     line_chart = px.line(
         data_trend, x='year', y='price',
         title='Average Price Evolution (Depreciation)',
-        markers=True,  # Add dots on the line
+        markers=True,
         template=THEME_TEMPLATE
     )
 
@@ -69,7 +69,7 @@ def create_box_plot_price_brand(data: pd.DataFrame) -> go.Figure:
 
 
 def create_pie_chart_transmission(data: pd.DataFrame) -> go.Figure:
-    """Creates Transmission share pie chart"""
+    """ Creates Transmission share pie chart """
     if data.empty:
         return go.Figure()
 
@@ -86,7 +86,7 @@ def create_pie_chart_transmission(data: pd.DataFrame) -> go.Figure:
 
 
 def create_histogram_price(data: pd.DataFrame) -> go.Figure:
-    """Creates Price frequency distribution histogram"""
+    """ Creates Price frequency distribution histogram """
     if data.empty:
         return go.Figure()
 
@@ -100,7 +100,7 @@ def create_histogram_price(data: pd.DataFrame) -> go.Figure:
 
 
 def create_heatmap_price_mileage_hp_year(data: pd.DataFrame) -> go.Figure:
-    """Creates Correlation Matrix heatmap"""
+    """ Creates Correlation Matrix heatmap """
     if data.empty:
         return go.Figure()
 
