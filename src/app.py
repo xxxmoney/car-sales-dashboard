@@ -152,26 +152,33 @@ app.layout = dbc.Container([
 ], fluid=True)
 
 
-# Filtered Data Callback
+# Methods for handling updates/interaction below - important - order of arguments matters!
+
+# Specify output for each KPI/Graph
 @app.callback(
     # KPI and Graphs
-    [Output('kpi-count', 'children'),
-     Output('kpi-price', 'children'),
-     Output('kpi-mileage', 'children'),
-     Output('graph-line-price-year', 'figure'),
-     Output('graph-scatter-price-mileage', 'figure'),
-     Output('graph-box-price-brand', 'figure'),
-     Output('graph-pie-transmission', 'figure'),
-     Output('graph-histogram-price', 'figure'),
-     Output('graph-heatmap-price-mileage-hp-year', 'figure')],
+    [
+        Output('kpi-count', 'children'),
+        Output('kpi-price', 'children'),
+        Output('kpi-mileage', 'children'),
+        Output('graph-line-price-year', 'figure'),
+        Output('graph-scatter-price-mileage', 'figure'),
+        Output('graph-box-price-brand', 'figure'),
+        Output('graph-pie-transmission', 'figure'),
+        Output('graph-histogram-price', 'figure'),
+        Output('graph-heatmap-price-mileage-hp-year', 'figure')
+    ],
 
     # Filters
-    [Input('filter-brand', 'value'),
-     Input('filter-year', 'value'),
-     Input('filter-fuel', 'value'),
-     Input('filter-transmission', 'value')]
+    [
+        Input('filter-brand', 'value'),
+        Input('filter-year', 'value'),
+        Input('filter-fuel', 'value'),
+        Input('filter-transmission', 'value')
+    ]
 )
 def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears):
+    """ handles dashboard update with filtered data """
     data_filtered = data.copy()
     data_filtered = data_filtered[(data_filtered['year'] >= year_range[0]) & (data_filtered['year'] <= year_range[1])]
 
@@ -202,17 +209,25 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
     )
 
 
-# Modal Interaction Callback
+# Specify handling of scatter plot click (open modal) and modal closing
 @app.callback(
-    [Output("car-modal", "is_open"),
-     Output("modal-body", "children")],
-    [Input("graph-scatter-price-mileage", "clickData"),
-     Input("close-modal", "n_clicks")],
-    [State("car-modal", "is_open")]
+    [
+        Output("car-modal", "is_open"),
+        Output("modal-body", "children")
+    ],
+    [
+        Input("graph-scatter-price-mileage", "clickData"),
+        Input("close-modal", "n_clicks")
+    ],
+    [
+        State("car-modal", "is_open")
+    ]
 )
 def toggle_modal(clickData, n_clicks, is_open):
+    """ Handles modal of specific car (click from scatter price-mileage plot, closing modal) """
     ctx = callback_context
-    if not ctx.triggered: return no_update, no_update
+    if not ctx.triggered:
+        return no_update, no_update
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
     if trigger_id == "graph-scatter-price-mileage" and clickData:
@@ -231,7 +246,7 @@ def toggle_modal(clickData, n_clicks, is_open):
         return False, no_update
     return is_open, no_update
 
-
+# Handles format for specific car modal
 def row_data(row):
     return {
         "Make": row['make'], "Model": row['model'],
