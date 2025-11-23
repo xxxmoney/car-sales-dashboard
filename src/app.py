@@ -3,7 +3,7 @@ import dash_bootstrap_components as dbc
 from src.data_loader import DataLoader
 import src.charts as charts
 
-# --- Initialization ---
+# Initialization
 external_stylesheets = [dbc.themes.FLATLY]
 app = Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
