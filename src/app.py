@@ -21,11 +21,11 @@ app.layout = dbc.Container([
     dbc.Row([
         dbc.Col([
             html.H1("Used Car Market Analysis", className="text-center mt-4"),
-            html.P("Interactive dashboard for AutoScout24 data", className="text-center text-muted mb-5")
+            html.P("Interactive dashboard for car sales data", className="text-center text-muted mb-5")
         ], width=12)
     ]),
 
-    # --- Detail Modal (Popup) ---
+    # Modal Car Details
     dbc.Modal([
         dbc.ModalHeader(dbc.ModalTitle("Car Details")),
         dbc.ModalBody(id="modal-body"),
@@ -36,7 +36,7 @@ app.layout = dbc.Container([
 
     # Main Grid
     dbc.Row([
-        # --- Sidebar ---
+        # Filters
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
@@ -53,9 +53,7 @@ app.layout = dbc.Container([
                         )
                     ], className="mb-3"),
 
-                    # (Model Filter Removed)
-
-                    # 2. Year Filter
+                    # Year Filter
                     html.Div([
                         html.Label("Production Year:", className="fw-bold mb-1"),
                         dcc.RangeSlider(
@@ -66,7 +64,7 @@ app.layout = dbc.Container([
                         )
                     ], className="mb-3"),
 
-                    # 3. Fuel Filter
+                    # Fuel Filter
                     html.Div([
                         html.Label("Fuel Type:", className="fw-bold mb-1"),
                         dcc.Dropdown(
@@ -77,7 +75,7 @@ app.layout = dbc.Container([
                         )
                     ], className="mb-4"),
 
-                    # 4. Transmission Filter
+                    # Transmission Filter
                     html.Div([
                         html.Label("Transmission:", className="fw-bold mb-2"),
                         dcc.Checklist(
@@ -93,7 +91,7 @@ app.layout = dbc.Container([
             ], className="bg-light border-0 shadow-sm h-100")
         ], xs=12, lg=3, className="mb-4 mb-lg-0"),
 
-        # --- Right Content ---
+        # Content
         dbc.Col([
             dcc.Loading(
                 id="loading-data",
@@ -117,7 +115,6 @@ app.layout = dbc.Container([
                         ]), className="text-center shadow-sm border-0 h-100"), xs=12, md=4, className="mb-4"),
                     ]),
 
-                    # Line Chart + Scatter Plot
                     dbc.Row([
                         dbc.Col(dbc.Card(dbc.CardBody([
                             dcc.Graph(id='graph-line')
@@ -128,7 +125,6 @@ app.layout = dbc.Container([
                         ]), className="shadow-sm border-0 h-100"), xs=12, lg=6, className="mb-4"),
                     ]),
 
-                    # Box + Pie
                     dbc.Row([
                         dbc.Col(dbc.Card(dbc.CardBody([
                             dcc.Graph(id='graph-box')
@@ -139,7 +135,6 @@ app.layout = dbc.Container([
                         ]), className="shadow-sm border-0 h-100"), xs=12, lg=4, className="mb-4"),
                     ]),
 
-                    # Hist + Heatmap
                     dbc.Row([
                         dbc.Col(dbc.Card(dbc.CardBody([
                             dcc.Graph(id='graph-histogram')
@@ -189,12 +184,12 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
     kpi_price = f"{dff['price'].mean():,.0f} €"
     kpi_mileage = f"{dff['mileage'].mean():,.0f} km"
 
-    fig_line = charts.create_line_chart(dff)
-    fig_scatter = charts.create_scatter_chart(dff)
-    fig_box = charts.create_box_plot(dff)
-    fig_pie = charts.create_pie_chart(dff)
-    fig_hist = charts.create_histogram(dff)
-    fig_heatmap = charts.create_heatmap(dff)
+    fig_line = charts.create_line_chart_price_year(dff)
+    fig_scatter = charts.create_scatter_chart_price_mileage(dff)
+    fig_box = charts.create_box_plot_price_brand(dff)
+    fig_pie = charts.create_pie_chart_transmission(dff)
+    fig_hist = charts.create_histogram_price(dff)
+    fig_heatmap = charts.create_heatmap_price_mileage_hp_year(dff)
 
     return kpi_count, kpi_price, kpi_mileage, fig_line, fig_scatter, fig_box, fig_pie, fig_hist, fig_heatmap
 

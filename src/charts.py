@@ -6,44 +6,43 @@ COMMON_TEMPLATE = 'plotly_white'
 COLOR_SEQ = ['#636EFA']
 
 
-def create_line_chart(df: pd.DataFrame) -> go.Figure:
-    """Creates Average Price Evolution over Time line chart."""
-    if df.empty:
+def create_line_chart_price_year(data: pd.DataFrame) -> go.Figure:
+    """Creates Average Price Evolution over Time line chart"""
+    if data.empty:
         return go.Figure()
 
-    # Group by year to find average price trend
-    # Reset index converts the Series back to a DataFrame
-    trend_data = df.groupby('year')['price'].mean().reset_index()
+    data_trend = data.groupby('year')['price'].mean().reset_index()
 
-    fig = px.line(
-        trend_data, x='year', y='price',
+    line_chart = px.line(
+        data_trend, x='year', y='price',
         title='Average Price Evolution (Depreciation)',
         markers=True,  # Add dots on the line
         template=COMMON_TEMPLATE
     )
 
-    # Improve tooltip
-    fig.update_traces(hovertemplate="Year: %{x}<br>Avg Price: %{y:,.0f} €<extra></extra>")
+    # Tooltip
+    line_chart.update_traces(hovertemplate="Year: %{x}<br>Avg Price: %{y:,.0f} €<extra></extra>")
 
-    return fig
+    return line_chart
 
 
-def create_scatter_chart(df: pd.DataFrame) -> go.Figure:
-    """Creates Price vs. Mileage scatter plot."""
-    if df.empty:
+def create_scatter_chart_price_mileage(data: pd.DataFrame) -> go.Figure:
+    """Creates Price vs. Mileage scatter plot"""
+    if data.empty:
         return go.Figure()
 
-    df_reset = df.reset_index()
+    data_reset = data.reset_index()
 
-    fig = px.scatter(
-        df_reset, x='mileage', y='price', color='fuel',
+    scatter = px.scatter(
+        data_reset, x='mileage', y='price', color='fuel',
         title='Price vs. Mileage (Click for details)',
         custom_data=['index', 'make', 'model', 'year', 'hp'],
         opacity=0.6,
         template=COMMON_TEMPLATE
     )
 
-    fig.update_traces(
+    # Tooltip
+    scatter.update_traces(
         hovertemplate=(
                 "<b>%{customdata[1]} %{customdata[2]}</b><br>" +
                 "Price: %{y:,.0f} €<br>" +
@@ -54,67 +53,69 @@ def create_scatter_chart(df: pd.DataFrame) -> go.Figure:
         )
     )
 
-    fig.update_layout(clickmode='event+select')
-    return fig
+    scatter.update_layout(clickmode='event+select')
+    return scatter
 
 
-def create_box_plot(df: pd.DataFrame) -> go.Figure:
-    """Creates Price Distribution by Brand box plot."""
-    if df.empty:
+def create_box_plot_price_brand(data: pd.DataFrame) -> go.Figure:
+    """Creates Price Distribution by Brand box plot"""
+    if data.empty:
         return go.Figure()
 
-    fig = px.box(
-        df, x='make', y='price',
+    box_plot = px.box(
+        data, x='make', y='price',
         title='Price Distribution by Brand',
         points="outliers",
         template=COMMON_TEMPLATE
     )
-    return fig
+    return box_plot
 
 
-def create_pie_chart(df: pd.DataFrame) -> go.Figure:
-    """Creates Transmission share pie chart."""
-    if df.empty:
+def create_pie_chart_transmission(data: pd.DataFrame) -> go.Figure:
+    """Creates Transmission share pie chart"""
+    if data.empty:
         return go.Figure()
 
-    fig = px.pie(
-        df, names='gear',
+    pie_chart = px.pie(
+        data, names='gear',
         title='Transmission Share',
         hole=0.4,
         template=COMMON_TEMPLATE
     )
-    fig.update_traces(textinfo='percent+label')
-    return fig
+
+    pie_chart.update_traces(textinfo='percent+label')
+
+    return pie_chart
 
 
-def create_histogram(df: pd.DataFrame) -> go.Figure:
-    """Creates Price frequency distribution histogram."""
-    if df.empty:
+def create_histogram_price(data: pd.DataFrame) -> go.Figure:
+    """Creates Price frequency distribution histogram"""
+    if data.empty:
         return go.Figure()
 
-    fig = px.histogram(
-        df, x="price", nbins=50,
+    histogram = px.histogram(
+        data, x="price", nbins=50,
         title="Price Distribution",
         color_discrete_sequence=COLOR_SEQ,
         template=COMMON_TEMPLATE
     )
-    return fig
+    return histogram
 
 
-def create_heatmap(df: pd.DataFrame) -> go.Figure:
-    """Creates Correlation Matrix heatmap."""
-    if df.empty:
+def create_heatmap_price_mileage_hp_year(data: pd.DataFrame) -> go.Figure:
+    """Creates Correlation Matrix heatmap"""
+    if data.empty:
         return go.Figure()
 
-    numeric_cols = ['price', 'mileage', 'hp', 'year']
-    corr = df[numeric_cols].corr()
+    numeric_columns = ['price', 'mileage', 'hp', 'year']
+    data_correlation = data[numeric_columns].corr()
 
-    fig = px.imshow(
-        corr,
+    heatmap = px.imshow(
+        data_correlation,
         text_auto='.2f',
         aspect="auto",
         title='Correlation Matrix',
         color_continuous_scale='RdBu_r',
         template=COMMON_TEMPLATE
     )
-    return fig
+    return heatmap
