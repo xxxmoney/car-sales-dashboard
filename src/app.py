@@ -223,16 +223,16 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
         State("car-modal", "is_open")
     ]
 )
-def toggle_modal(clickData, n_clicks, is_open):
+def toggle_modal(click_data, n_clicks, is_open):
     """ Handles modal of specific car (click from scatter price-mileage plot, closing modal) """
     ctx = callback_context
     if not ctx.triggered:
         return no_update, no_update
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    if trigger_id == "graph-scatter-price-mileage" and clickData:
+    if trigger_id == "graph-scatter-price-mileage" and click_data:
         try:
-            car_id = clickData['points'][0]['customdata'][0]
+            car_id = click_data['points'][0]['customdata'][0]
             car_row = data.loc[car_id]
             details = dbc.Table([html.Tbody([
                 html.Tr([html.Td(k), html.Td(v, className="fw-bold" if k in ['make', 'price'] else "")])
