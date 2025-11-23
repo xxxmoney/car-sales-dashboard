@@ -45,8 +45,8 @@ app.layout = dbc.Container([
                     html.Div([
                         html.Label("Car Brand:", className="fw-bold mb-1"),
                         dcc.Dropdown(
-                            id='filter-brand',
-                            options=[{'label': b, 'value': b} for b in brands],
+                            id="filter-brand",
+                            options=[{"label": b, "value": b} for b in brands],
                             multi=True,
                             placeholder="Select brands..."
                         )
@@ -56,7 +56,7 @@ app.layout = dbc.Container([
                     html.Div([
                         html.Label("Production Year:", className="fw-bold mb-1"),
                         dcc.RangeSlider(
-                            id='filter-year',
+                            id="filter-year",
                             min=min_year, max=max_year, step=1,
                             marks={i: str(i) for i in range(min_year, max_year + 1, 2)},
                             value=[min_year, max_year]
@@ -67,8 +67,8 @@ app.layout = dbc.Container([
                     html.Div([
                         html.Label("Fuel Type:", className="fw-bold mb-1"),
                         dcc.Dropdown(
-                            id='filter-fuel',
-                            options=[{'label': f, 'value': f} for f in data['fuel'].unique()],
+                            id="filter-fuel",
+                            options=[{"label": f, "value": f} for f in data["fuel"].unique()],
                             multi=True,
                             placeholder="All fuels"
                         )
@@ -78,9 +78,9 @@ app.layout = dbc.Container([
                     html.Div([
                         html.Label("Transmission:", className="fw-bold mb-2"),
                         dcc.Checklist(
-                            id='filter-transmission',
-                            options=[{'label': g, 'value': g} for g in data['gear'].unique()],
-                            value=[g for g in data['gear'].unique()],
+                            id="filter-transmission",
+                            options=[{"label": g, "value": g} for g in data["gear"].unique()],
+                            value=[g for g in data["gear"].unique()],
                             inline=True,
                             inputClassName="me-2",
                             labelClassName="me-3"
@@ -100,47 +100,47 @@ app.layout = dbc.Container([
                     dbc.Row([
                         dbc.Col(dbc.Card(dbc.CardBody([
                             html.H6("Total Cars", className="card-title text-muted"),
-                            html.H3(id='kpi-count', className="card-text")
+                            html.H3(id="kpi-count", className="card-text")
                         ]), className="text-center shadow-sm border-0 h-100"), xs=12, md=4, className="mb-4"),
 
                         dbc.Col(dbc.Card(dbc.CardBody([
                             html.H6("Avg Price", className="card-title text-muted"),
-                            html.H3(id='kpi-price', className="card-text")
+                            html.H3(id="kpi-price", className="card-text")
                         ]), className="text-center shadow-sm border-0 h-100"), xs=12, md=4, className="mb-4"),
 
                         dbc.Col(dbc.Card(dbc.CardBody([
                             html.H6("Avg Mileage", className="card-title text-muted"),
-                            html.H3(id='kpi-mileage', className="card-text")
+                            html.H3(id="kpi-mileage", className="card-text")
                         ]), className="text-center shadow-sm border-0 h-100"), xs=12, md=4, className="mb-4"),
                     ]),
 
                     dbc.Row([
                         dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id='graph-line-price-year')
+                            dcc.Graph(id="graph-line-price-year")
                         ]), className="shadow-sm border-0 h-100"), xs=12, lg=6, className="mb-4"),
 
                         dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id='graph-scatter-price-mileage')
+                            dcc.Graph(id="graph-scatter-price-mileage")
                         ]), className="shadow-sm border-0 h-100"), xs=12, lg=6, className="mb-4"),
                     ]),
 
                     dbc.Row([
                         dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id='graph-box-price-brand')
+                            dcc.Graph(id="graph-box-price-brand")
                         ]), className="shadow-sm border-0 h-100"), xs=12, lg=8, className="mb-4"),
 
                         dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id='graph-pie-transmission')
+                            dcc.Graph(id="graph-pie-transmission")
                         ]), className="shadow-sm border-0 h-100"), xs=12, lg=4, className="mb-4"),
                     ]),
 
                     dbc.Row([
                         dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id='graph-histogram-price')
+                            dcc.Graph(id="graph-histogram-price")
                         ]), className="shadow-sm border-0 h-100"), xs=12, lg=6, className="mb-4"),
 
                         dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id='graph-heatmap-price-mileage-hp-year')
+                            dcc.Graph(id="graph-heatmap-price-mileage-hp-year")
                         ]), className="shadow-sm border-0 h-100"), xs=12, lg=6, className="mb-4"),
                     ]),
                 ]
@@ -157,23 +157,23 @@ app.layout = dbc.Container([
 @app.callback(
     # KPI and Graphs
     [
-        Output('kpi-count', 'children'),
-        Output('kpi-price', 'children'),
-        Output('kpi-mileage', 'children'),
-        Output('graph-line-price-year', 'figure'),
-        Output('graph-scatter-price-mileage', 'figure'),
-        Output('graph-box-price-brand', 'figure'),
-        Output('graph-pie-transmission', 'figure'),
-        Output('graph-histogram-price', 'figure'),
-        Output('graph-heatmap-price-mileage-hp-year', 'figure')
+        Output("kpi-count", "children"),
+        Output("kpi-price", "children"),
+        Output("kpi-mileage", "children"),
+        Output("graph-line-price-year", "figure"),
+        Output("graph-scatter-price-mileage", "figure"),
+        Output("graph-box-price-brand", "figure"),
+        Output("graph-pie-transmission", "figure"),
+        Output("graph-histogram-price", "figure"),
+        Output("graph-heatmap-price-mileage-hp-year", "figure")
     ],
 
     # Filters
     [
-        Input('filter-brand', 'value'),
-        Input('filter-year', 'value'),
-        Input('filter-fuel', 'value'),
-        Input('filter-transmission', 'value')
+        Input("filter-brand", "value"),
+        Input("filter-year", "value"),
+        Input("filter-fuel", "value"),
+        Input("filter-transmission", "value")
     ]
 )
 def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears):
@@ -181,20 +181,20 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
     data_filtered = data.copy()
 
     # Apply filters - year, make, fuel and gear
-    data_filtered = data_filtered[(data_filtered['year'] >= year_range[0]) & (data_filtered['year'] <= year_range[1])]
+    data_filtered = data_filtered[(data_filtered["year"] >= year_range[0]) & (data_filtered["year"] <= year_range[1])]
     if selected_brands:
-        data_filtered = data_filtered[data_filtered['make'].isin(selected_brands)]
+        data_filtered = data_filtered[data_filtered["make"].isin(selected_brands)]
     if selected_fuels:
-        data_filtered = data_filtered[data_filtered['fuel'].isin(selected_fuels)]
+        data_filtered = data_filtered[data_filtered["fuel"].isin(selected_fuels)]
     if selected_gears:
-        data_filtered = data_filtered[data_filtered['gear'].isin(selected_gears)]
+        data_filtered = data_filtered[data_filtered["gear"].isin(selected_gears)]
 
     if data_filtered.empty:
         return "0", "0 €", "0 km", {}, {}, {}, {}, {}, {}
 
     kpi_count = f"{len(data_filtered)}"
-    kpi_price = f"{data_filtered['price'].mean():,.0f} €"
-    kpi_mileage = f"{data_filtered['mileage'].mean():,.0f} km"
+    kpi_price = f"{data_filtered["price"].mean():,.0f} €"
+    kpi_mileage = f"{data_filtered["mileage"].mean():,.0f} km"
 
     return (
         kpi_count,
@@ -228,15 +228,15 @@ def toggle_modal(click_data, n_clicks, is_open):
     ctx = callback_context
     if not ctx.triggered:
         return no_update, no_update
-    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
     if trigger_id == "graph-scatter-price-mileage" and click_data:
         # Try to fill the modal table with specific car data
         try:
-            car_id = click_data['points'][0]['customdata'][0]
+            car_id = click_data["points"][0]["customdata"][0]
             car_row = data.loc[car_id]
             details = dbc.Table([html.Tbody([
-                html.Tr([html.Td(k), html.Td(v, className="fw-bold" if k in ['make', 'price'] else "")])
+                html.Tr([html.Td(k), html.Td(v, className="fw-bold" if k in ["make", "price"] else "")])
                 for k, v in row_data(car_row).items()
             ])], striped=True, bordered=True)
             return True, details
@@ -250,10 +250,10 @@ def toggle_modal(click_data, n_clicks, is_open):
 # Handles format for specific car modal
 def row_data(row):
     return {
-        "Make": row['make'], "Model": row['model'],
-        "Price": f"{row['price']:,.0f} €",
-        "Mileage": f"{row['mileage']:,.0f} km",
-        "Year": row['year'], "Power": f"{row['hp']} HP",
-        "Fuel": row['fuel'], "Gear": row['gear'],
-        "Offer Type": row['offerType']
+        "Make": row["make"], "Model": row["model"],
+        "Price": f"{row["price"]:,.0f} €",
+        "Mileage": f"{row["mileage"]:,.0f} km",
+        "Year": row["year"], "Power": f"{row["hp"]} HP",
+        "Fuel": row["fuel"], "Gear": row["gear"],
+        "Offer Type": row["offerType"]
     }

@@ -8,11 +8,11 @@ def create_line_chart_price_year(data: pd.DataFrame) -> go.Figure:
     if data.empty:
         return go.Figure()
 
-    data_trend = data.groupby('year')['price'].mean().reset_index()
+    data_trend = data.groupby("year")["price"].mean().reset_index()
 
     line_chart = px.line(
-        data_trend, x='year', y='price',
-        title='Average Price Evolution (Depreciation)',
+        data_trend, x="year", y="price",
+        title="Average Price Evolution (Depreciation)",
         markers=True,
         template=THEME_TEMPLATE
     )
@@ -32,9 +32,9 @@ def create_scatter_chart_price_mileage(data: pd.DataFrame) -> go.Figure:
     data_reset = data.reset_index()
 
     scatter = px.scatter(
-        data_reset, x='mileage', y='price', color='fuel',
-        title='Price vs. Mileage (Click for details)',
-        custom_data=['index', 'make', 'model', 'year', 'hp'],
+        data_reset, x="mileage", y="price", color="fuel",
+        title="Price vs. Mileage (Click for details)",
+        custom_data=["index", "make", "model", "year", "hp"],
         opacity=0.6,
         template=THEME_TEMPLATE
     )
@@ -51,7 +51,7 @@ def create_scatter_chart_price_mileage(data: pd.DataFrame) -> go.Figure:
         )
     )
 
-    scatter.update_layout(clickmode='event+select')
+    scatter.update_layout(clickmode="event+select")
     return scatter
 
 
@@ -61,8 +61,8 @@ def create_box_plot_price_brand(data: pd.DataFrame) -> go.Figure:
         return go.Figure()
 
     box_plot = px.box(
-        data, x='make', y='price',
-        title='Price Distribution by Brand',
+        data, x="make", y="price",
+        title="Price Distribution by Brand",
         points="outliers",
         template=THEME_TEMPLATE
     )
@@ -75,14 +75,14 @@ def create_pie_chart_transmission(data: pd.DataFrame) -> go.Figure:
         return go.Figure()
 
     pie_chart = px.pie(
-        data, names='gear',
-        title='Transmission Share',
+        data, names="gear",
+        title="Transmission Share",
         hole=0.4,
         template=THEME_TEMPLATE
     )
 
     # Text label
-    pie_chart.update_traces(textinfo='percent+label')
+    pie_chart.update_traces(textinfo="percent+label")
 
     return pie_chart
 
@@ -95,7 +95,7 @@ def create_histogram_price(data: pd.DataFrame) -> go.Figure:
     histogram = px.histogram(
         data, x="price", nbins=50,
         title="Price Distribution",
-        color_discrete_sequence=['#636EFA'],
+        color_discrete_sequence=["#636EFA"],
         template=THEME_TEMPLATE
     )
     return histogram
@@ -106,15 +106,15 @@ def create_heatmap_price_mileage_hp_year(data: pd.DataFrame) -> go.Figure:
     if data.empty:
         return go.Figure()
 
-    numeric_columns = ['price', 'mileage', 'hp', 'year']
+    numeric_columns = ["price", "mileage", "hp", "year"]
     data_correlation = data[numeric_columns].corr()
 
     heatmap = px.imshow(
         data_correlation,
-        text_auto='.2f',
+        text_auto=".2f",
         aspect="auto",
-        title='Correlation Matrix',
-        color_continuous_scale='RdBu_r',
+        title="Correlation Matrix",
+        color_continuous_scale="RdBu_r",
         template=THEME_TEMPLATE
     )
     return heatmap
