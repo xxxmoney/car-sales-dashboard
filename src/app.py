@@ -1,6 +1,5 @@
 from dash import Dash, html, dcc, Input, Output, State, callback_context, no_update
 import dash_bootstrap_components as dbc
-import pandas as pd
 from src.data_loader import DataLoader
 import src.charts as charts
 
