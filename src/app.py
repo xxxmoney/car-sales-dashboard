@@ -25,14 +25,14 @@ app.layout = dbc.Container([
         ], width=12)
     ]),
 
-    # --- NEW: Detail Modal (Popup) ---
+    # --- Detail Modal (Popup) ---
     dbc.Modal([
         dbc.ModalHeader(dbc.ModalTitle("Car Details")),
-        dbc.ModalBody(id="modal-body"),  # Content will be filled by callback
+        dbc.ModalBody(id="modal-body"),
         dbc.ModalFooter(
             dbc.Button("Close", id="close-modal", className="ms-auto", n_clicks=0)
         ),
-    ], id="car-modal", is_open=False, size="lg"),  # lg = large modal
+    ], id="car-modal", is_open=False, size="lg"),
 
     # Main Grid
     dbc.Row([
@@ -42,6 +42,7 @@ app.layout = dbc.Container([
                 dbc.CardBody([
                     html.H4("Filters", className="card-title mb-4"),
 
+                    # 1. Brand Filter
                     html.Div([
                         html.Label("Car Brand:", className="fw-bold mb-1"),
                         dcc.Dropdown(
@@ -52,6 +53,9 @@ app.layout = dbc.Container([
                         )
                     ], className="mb-3"),
 
+                    # (Model Filter Removed)
+
+                    # 2. Year Filter
                     html.Div([
                         html.Label("Production Year:", className="fw-bold mb-1"),
                         dcc.RangeSlider(
@@ -62,6 +66,7 @@ app.layout = dbc.Container([
                         )
                     ], className="mb-3"),
 
+                    # 3. Fuel Filter
                     html.Div([
                         html.Label("Fuel Type:", className="fw-bold mb-1"),
                         dcc.Dropdown(
@@ -72,6 +77,7 @@ app.layout = dbc.Container([
                         )
                     ], className="mb-4"),
 
+                    # 4. Transmission Filter
                     html.Div([
                         html.Label("Transmission:", className="fw-bold mb-2"),
                         dcc.Checklist(
@@ -102,19 +108,25 @@ app.layout = dbc.Container([
 
                         dbc.Col(dbc.Card(dbc.CardBody([
                             html.H6("Avg Price", className="card-title text-muted"),
-                            html.H3(id='kpi-price', className="card-text text-primary")
+                            html.H3(id='kpi-price', className="card-text")
                         ]), className="text-center shadow-sm border-0 h-100"), xs=12, md=4, className="mb-4"),
 
                         dbc.Col(dbc.Card(dbc.CardBody([
                             html.H6("Avg Mileage", className="card-title text-muted"),
-                            html.H3(id='kpi-mileage', className="card-text text-info")
+                            html.H3(id='kpi-mileage', className="card-text")
                         ]), className="text-center shadow-sm border-0 h-100"), xs=12, md=4, className="mb-4"),
                     ]),
 
-                    # Scatter Plot
-                    dbc.Card(dbc.CardBody([
-                        dcc.Graph(id='graph-scatter')
-                    ]), className="mb-4 shadow-sm border-0"),
+                    # Line Chart + Scatter Plot
+                    dbc.Row([
+                        dbc.Col(dbc.Card(dbc.CardBody([
+                            dcc.Graph(id='graph-line')
+                        ]), className="shadow-sm border-0 h-100"), xs=12, lg=6, className="mb-4"),
+
+                        dbc.Col(dbc.Card(dbc.CardBody([
+                            dcc.Graph(id='graph-scatter')
+                        ]), className="shadow-sm border-0 h-100"), xs=12, lg=6, className="mb-4"),
+                    ]),
 
                     # Box + Pie
                     dbc.Row([
@@ -145,95 +157,84 @@ app.layout = dbc.Container([
 ], fluid=True)
 
 
-# --- 1. Main Data Callback (Same as before) ---
+# --- Main Data Callback ---
 @app.callback(
     [Output('kpi-count', 'children'),
      Output('kpi-price', 'children'),
      Output('kpi-mileage', 'children'),
+     Output('graph-line', 'figure'),
      Output('graph-scatter', 'figure'),
      Output('graph-box', 'figure'),
      Output('graph-pie', 'figure'),
      Output('graph-histogram', 'figure'),
      Output('graph-heatmap', 'figure')],
     [Input('filter-brand', 'value'),
+     # Removed filter-model input
      Input('filter-year', 'value'),
      Input('filter-fuel', 'value'),
      Input('filter-gear', 'value')]
 )
 def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears):
-    # (Data logic omitted for brevity - same as before)
     dff = data.copy()
     dff = dff[(dff['year'] >= year_range[0]) & (dff['year'] <= year_range[1])]
+
     if selected_brands: dff = dff[dff['make'].isin(selected_brands)]
+    # Removed model filtering logic
     if selected_fuels: dff = dff[dff['fuel'].isin(selected_fuels)]
     if selected_gears: dff = dff[dff['gear'].isin(selected_gears)]
 
-    if dff.empty: return "0", "0 €", "0 km", {}, {}, {}, {}, {}
+    if dff.empty: return "0", "0 €", "0 km", {}, {}, {}, {}, {}, {}
 
     kpi_count = f"{len(dff)}"
     kpi_price = f"{dff['price'].mean():,.0f} €"
     kpi_mileage = f"{dff['mileage'].mean():,.0f} km"
 
+    fig_line = charts.create_line_chart(dff)
     fig_scatter = charts.create_scatter_chart(dff)
     fig_box = charts.create_box_plot(dff)
     fig_pie = charts.create_pie_chart(dff)
     fig_hist = charts.create_histogram(dff)
     fig_heatmap = charts.create_heatmap(dff)
 
-    return kpi_count, kpi_price, kpi_mileage, fig_scatter, fig_box, fig_pie, fig_hist, fig_heatmap
+    return kpi_count, kpi_price, kpi_mileage, fig_line, fig_scatter, fig_box, fig_pie, fig_hist, fig_heatmap
 
 
-# --- 2. NEW: Modal Interaction Callback ---
+# --- Modal Interaction Callback ---
 @app.callback(
     [Output("car-modal", "is_open"),
      Output("modal-body", "children")],
-    [Input("graph-scatter", "clickData"),  # Trigger: Click on graph
-     Input("close-modal", "n_clicks")],  # Trigger: Click close
-    [State("car-modal", "is_open")]  # State: Is it currently open?
+    [Input("graph-scatter", "clickData"),
+     Input("close-modal", "n_clicks")],
+    [State("car-modal", "is_open")]
 )
 def toggle_modal(clickData, n_clicks, is_open):
     ctx = callback_context
-    if not ctx.triggered:
-        return no_update, no_update
-
+    if not ctx.triggered: return no_update, no_update
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    # If graph was clicked
     if trigger_id == "graph-scatter" and clickData:
-        # Get the 'custom_data' we passed in charts.py (Index 0 is the ID)
-        point = clickData['points'][0]
-        # Depending on Plotly version, customdata might be a list or value
-        # In charts.py we passed: custom_data=['index', 'make', ...]
         try:
-            car_id = point['customdata'][0]
-
-            # Lookup car in original dataframe
+            car_id = clickData['points'][0]['customdata'][0]
             car_row = data.loc[car_id]
-
-            # Create Detail View (Bootstrap Table)
-            details = dbc.Table([
-                html.Tbody([
-                    html.Tr([html.Td("Make:"), html.Td(car_row['make'], className="fw-bold")]),
-                    html.Tr([html.Td("Model:"), html.Td(car_row['model'])]),
-                    html.Tr(
-                        [html.Td("Price:"), html.Td(f"{car_row['price']:,.0f} €", className="text-primary fw-bold")]),
-                    html.Tr([html.Td("Mileage:"), html.Td(f"{car_row['mileage']:,.0f} km")]),
-                    html.Tr([html.Td("Year:"), html.Td(car_row['year'])]),
-                    html.Tr([html.Td("Power:"), html.Td(f"{car_row['hp']} HP")]),
-                    html.Tr([html.Td("Fuel:"), html.Td(car_row['fuel'])]),
-                    html.Tr([html.Td("Gear:"), html.Td(car_row['gear'])]),
-                    html.Tr([html.Td("Offer Type:"), html.Td(car_row['offerType'])]),
-                ])
-            ], striped=True, bordered=True, hover=True)
-
+            details = dbc.Table([html.Tbody([
+                html.Tr([html.Td(k), html.Td(v, className="fw-bold" if k in ['make', 'price'] else "")])
+                for k, v in row_data(car_row).items()
+            ])], striped=True, bordered=True)
             return True, details
+        except:
+            return True, "Error loading details"
 
-        except Exception as e:
-            # Fallback for errors
-            return True, html.P(f"Error loading details: {str(e)}")
-
-    # If Close button was clicked
     elif trigger_id == "close-modal":
         return False, no_update
-
     return is_open, no_update
+
+
+def row_data(row):
+    return {
+        "Make": row['make'], "Model": row['model'],
+        "Price": f"{row['price']:,.0f} €",
+        "Mileage": f"{row['mileage']:,.0f} km",
+        "Year": row['year'], "Power": f"{row['hp']} HP",
+        "Fuel": row['fuel'], "Gear": row['gear'],
+        "Offer Type": row['offerType']
+    }

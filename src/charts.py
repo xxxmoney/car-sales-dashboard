@@ -6,18 +6,38 @@ COMMON_TEMPLATE = 'plotly_white'
 COLOR_SEQ = ['#636EFA']
 
 
+def create_line_chart(df: pd.DataFrame) -> go.Figure:
+    """Creates Average Price Evolution over Time line chart."""
+    if df.empty:
+        return go.Figure()
+
+    # Group by year to find average price trend
+    # Reset index converts the Series back to a DataFrame
+    trend_data = df.groupby('year')['price'].mean().reset_index()
+
+    fig = px.line(
+        trend_data, x='year', y='price',
+        title='Average Price Evolution (Depreciation)',
+        markers=True,  # Add dots on the line
+        template=COMMON_TEMPLATE
+    )
+
+    # Improve tooltip
+    fig.update_traces(hovertemplate="Year: %{x}<br>Avg Price: %{y:,.0f} €<extra></extra>")
+
+    return fig
+
+
 def create_scatter_chart(df: pd.DataFrame) -> go.Figure:
     """Creates Price vs. Mileage scatter plot."""
     if df.empty:
         return go.Figure()
 
-    # Reset index to make sure we can pass it as a column
     df_reset = df.reset_index()
 
     fig = px.scatter(
         df_reset, x='mileage', y='price', color='fuel',
-        title='Price vs. Mileage Correlation (Click for details)',
-        # 0=index, 1=make, 2=model, 3=year, 4=hp
+        title='Price vs. Mileage (Click for details)',
         custom_data=['index', 'make', 'model', 'year', 'hp'],
         opacity=0.6,
         template=COMMON_TEMPLATE
