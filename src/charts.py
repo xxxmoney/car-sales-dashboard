@@ -81,7 +81,7 @@ def create_pie_chart_transmission(data: pd.DataFrame) -> go.Figure:
         template=THEME_TEMPLATE
     )
 
-    # Set text label
+    # Text label
     pie_chart.update_traces(textinfo='percent+label')
 
     return pie_chart
