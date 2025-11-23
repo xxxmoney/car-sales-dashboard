@@ -152,7 +152,7 @@ app.layout = dbc.Container([
 ], fluid=True)
 
 
-# --- Main Data Callback ---
+# Filtered Data Callback
 @app.callback(
     # KPI and Graphs
     [Output('kpi-count', 'children'),
@@ -202,7 +202,7 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
     )
 
 
-# --- Modal Interaction Callback ---
+# Modal Interaction Callback
 @app.callback(
     [Output("car-modal", "is_open"),
      Output("modal-body", "children")],
