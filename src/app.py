@@ -180,8 +180,9 @@ app.layout = dbc.Container([
 def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears):
     """ handles dashboard update with filtered data """
     data_filtered = data.copy()
-    data_filtered = data_filtered[(data_filtered['year'] >= year_range[0]) & (data_filtered['year'] <= year_range[1])]
 
+    # Apply filters - year, make, fuel and gear
+    data_filtered = data_filtered[(data_filtered['year'] >= year_range[0]) & (data_filtered['year'] <= year_range[1])]
     if selected_brands:
         data_filtered = data_filtered[data_filtered['make'].isin(selected_brands)]
     if selected_fuels:
@@ -231,6 +232,7 @@ def toggle_modal(click_data, n_clicks, is_open):
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
     if trigger_id == "graph-scatter-price-mileage" and click_data:
+        # Try to fill the modal table with specific car data
         try:
             car_id = click_data['points'][0]['customdata'][0]
             car_row = data.loc[car_id]
@@ -241,9 +243,9 @@ def toggle_modal(click_data, n_clicks, is_open):
             return True, details
         except:
             return True, "Error loading details"
-
     elif trigger_id == "close-modal":
         return False, no_update
+
     return is_open, no_update
 
 # Handles format for specific car modal

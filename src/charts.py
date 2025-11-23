@@ -28,6 +28,7 @@ def create_scatter_chart_price_mileage(data: pd.DataFrame) -> go.Figure:
     if data.empty:
         return go.Figure()
 
+    # Make sure index is also a column - so we can access specific car in modal
     data_reset = data.reset_index()
 
     scatter = px.scatter(
@@ -80,6 +81,7 @@ def create_pie_chart_transmission(data: pd.DataFrame) -> go.Figure:
         template=THEME_TEMPLATE
     )
 
+    # Set text label
     pie_chart.update_traces(textinfo='percent+label')
 
     return pie_chart
