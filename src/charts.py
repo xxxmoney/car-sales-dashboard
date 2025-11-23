@@ -1,13 +1,10 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-
-COMMON_TEMPLATE = 'plotly_white'
-COLOR_SEQ = ['#636EFA']
-
+from src.constants import THEME_TEMPLATE
 
 def create_line_chart_price_year(data: pd.DataFrame) -> go.Figure:
-    """Creates Average Price Evolution over Time line chart"""
+    """ Creates Average Price Evolution over Time line chart """
     if data.empty:
         return go.Figure()
 
@@ -17,7 +14,7 @@ def create_line_chart_price_year(data: pd.DataFrame) -> go.Figure:
         data_trend, x='year', y='price',
         title='Average Price Evolution (Depreciation)',
         markers=True,  # Add dots on the line
-        template=COMMON_TEMPLATE
+        template=THEME_TEMPLATE
     )
 
     # Tooltip
@@ -27,7 +24,7 @@ def create_line_chart_price_year(data: pd.DataFrame) -> go.Figure:
 
 
 def create_scatter_chart_price_mileage(data: pd.DataFrame) -> go.Figure:
-    """Creates Price vs. Mileage scatter plot"""
+    """ Creates Price vs. Mileage scatter plot """
     if data.empty:
         return go.Figure()
 
@@ -38,7 +35,7 @@ def create_scatter_chart_price_mileage(data: pd.DataFrame) -> go.Figure:
         title='Price vs. Mileage (Click for details)',
         custom_data=['index', 'make', 'model', 'year', 'hp'],
         opacity=0.6,
-        template=COMMON_TEMPLATE
+        template=THEME_TEMPLATE
     )
 
     # Tooltip
@@ -58,7 +55,7 @@ def create_scatter_chart_price_mileage(data: pd.DataFrame) -> go.Figure:
 
 
 def create_box_plot_price_brand(data: pd.DataFrame) -> go.Figure:
-    """Creates Price Distribution by Brand box plot"""
+    """ Creates Price Distribution by Brand box plot """
     if data.empty:
         return go.Figure()
 
@@ -66,7 +63,7 @@ def create_box_plot_price_brand(data: pd.DataFrame) -> go.Figure:
         data, x='make', y='price',
         title='Price Distribution by Brand',
         points="outliers",
-        template=COMMON_TEMPLATE
+        template=THEME_TEMPLATE
     )
     return box_plot
 
@@ -80,7 +77,7 @@ def create_pie_chart_transmission(data: pd.DataFrame) -> go.Figure:
         data, names='gear',
         title='Transmission Share',
         hole=0.4,
-        template=COMMON_TEMPLATE
+        template=THEME_TEMPLATE
     )
 
     pie_chart.update_traces(textinfo='percent+label')
@@ -96,8 +93,8 @@ def create_histogram_price(data: pd.DataFrame) -> go.Figure:
     histogram = px.histogram(
         data, x="price", nbins=50,
         title="Price Distribution",
-        color_discrete_sequence=COLOR_SEQ,
-        template=COMMON_TEMPLATE
+        color_discrete_sequence=['#636EFA'],
+        template=THEME_TEMPLATE
     )
     return histogram
 
@@ -116,6 +113,6 @@ def create_heatmap_price_mileage_hp_year(data: pd.DataFrame) -> go.Figure:
         aspect="auto",
         title='Correlation Matrix',
         color_continuous_scale='RdBu_r',
-        template=COMMON_TEMPLATE
+        template=THEME_TEMPLATE
     )
     return heatmap
