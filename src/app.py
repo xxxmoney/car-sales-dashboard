@@ -172,28 +172,34 @@ app.layout = dbc.Container([
      Input('filter-transmission', 'value')]
 )
 def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears):
-    dff = data.copy()
-    dff = dff[(dff['year'] >= year_range[0]) & (dff['year'] <= year_range[1])]
+    data_filtered = data.copy()
+    data_filtered = data_filtered[(data_filtered['year'] >= year_range[0]) & (data_filtered['year'] <= year_range[1])]
 
-    if selected_brands: dff = dff[dff['make'].isin(selected_brands)]
-    # Removed model filtering logic
-    if selected_fuels: dff = dff[dff['fuel'].isin(selected_fuels)]
-    if selected_gears: dff = dff[dff['gear'].isin(selected_gears)]
+    if selected_brands:
+        data_filtered = data_filtered[data_filtered['make'].isin(selected_brands)]
+    if selected_fuels:
+        data_filtered = data_filtered[data_filtered['fuel'].isin(selected_fuels)]
+    if selected_gears:
+        data_filtered = data_filtered[data_filtered['gear'].isin(selected_gears)]
 
-    if dff.empty: return "0", "0 €", "0 km", {}, {}, {}, {}, {}, {}
+    if data_filtered.empty:
+        return "0", "0 €", "0 km", {}, {}, {}, {}, {}, {}
 
-    kpi_count = f"{len(dff)}"
-    kpi_price = f"{dff['price'].mean():,.0f} €"
-    kpi_mileage = f"{dff['mileage'].mean():,.0f} km"
+    kpi_count = f"{len(data_filtered)}"
+    kpi_price = f"{data_filtered['price'].mean():,.0f} €"
+    kpi_mileage = f"{data_filtered['mileage'].mean():,.0f} km"
 
-    fig_line = charts.create_line_chart_price_year(dff)
-    fig_scatter = charts.create_scatter_chart_price_mileage(dff)
-    fig_box = charts.create_box_plot_price_brand(dff)
-    fig_pie = charts.create_pie_chart_transmission(dff)
-    fig_hist = charts.create_histogram_price(dff)
-    fig_heatmap = charts.create_heatmap_price_mileage_hp_year(dff)
-
-    return kpi_count, kpi_price, kpi_mileage, fig_line, fig_scatter, fig_box, fig_pie, fig_hist, fig_heatmap
+    return (
+        kpi_count,
+        kpi_price,
+        kpi_mileage,
+        charts.create_line_chart_price_year(data_filtered),
+        charts.create_scatter_chart_price_mileage(data_filtered),
+        charts.create_box_plot_price_brand(data_filtered),
+        charts.create_pie_chart_transmission(data_filtered),
+        charts.create_histogram_price(data_filtered),
+        charts.create_heatmap_price_mileage_hp_year(data_filtered)
+    )
 
 
 # --- Modal Interaction Callback ---
