@@ -1,6 +1,7 @@
 import pandas as pd
 from src import constants
 
+
 class DataLoader:
     """ Handles loading and cleaning of data """
 
@@ -9,16 +10,25 @@ class DataLoader:
         self.data = None
 
     def load_data(self) -> pd.DataFrame:
-        """ Load CSV and perform basic cleaning """
+        """ Load CSV and perform comprehensive cleaning """
         # Load raw data
         self.data = pd.read_csv(self.filepath)
 
-        # Drop rows with missing critical values
-        # HP and Gear are critical for our analysis
-        self.data.dropna(subset=["hp", "gear"], inplace=True)
+        # 1. Drop rows with missing critical values
+        # We need these columns to be valid for our charts to work correctly
+        # 'make', 'model', 'fuel' -> needed for Sunburst hierarchy
+        # 'hp', 'gear' -> needed for filters and scatter plots
+        critical_columns = ["make", "model", "fuel", "hp", "gear"]
+        self.data.dropna(subset=critical_columns, inplace=True)
 
+        # 2. Convert types
         # Cast year to integer
         self.data["year"] = self.data["year"].astype(int)
+
+        # 3. Handle outliers/invalid data (Optional refinement)
+        # E.g., remove cars with 0 HP or 0 Price if they exist, as they skew averages
+        self.data = self.data[self.data["price"] > 100]
+        self.data = self.data[self.data["hp"] > 0]
 
         return self.data
 

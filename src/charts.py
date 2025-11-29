@@ -1,6 +1,7 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+import numpy as np
 from src.constants import THEME_TEMPLATE, COLOR_PRIMARY, COLOR_SEQUENCE, COLOR_SECONDARY
 
 
@@ -88,27 +89,30 @@ def create_sunburst_chart(data: pd.DataFrame) -> go.Figure:
     """
     Sunburst Chart: Hierarchical view of the market
     Brand -> Model -> Fuel
+    Logic update: Now groups smaller brands into "Other" so the percentages match global insights.
     """
     if data.empty:
         return go.Figure()
 
-    # --- FIX START: Drop rows with missing values in path columns ---
-    # Sunburst fails if 'model' is missing but 'fuel' is present (broken hierarchy)
-    # We create a copy to avoid SettingWithCopyWarning on the original dataframe
-    clean_data = data.dropna(subset=["make", "model", "fuel"]).copy()
+    # Work on a copy to avoid SettingWithCopyWarning
+    df_chart = data.copy()
 
-    if clean_data.empty:
-        return go.Figure()
-    # --- FIX END ---
+    # 1. Identify Top Brands (e.g., top 10)
+    top_n = 10
+    top_brands = df_chart["make"].value_counts().nlargest(top_n).index
 
-    # We limit to top 15 brands to keep the chart readable
-    top_brands = clean_data["make"].value_counts().nlargest(15).index
-    data_filtered = clean_data[clean_data["make"].isin(top_brands)]
+    # 2. Replace smaller brands with 'Other'
+    # This ensures the chart represents 100% of the data, matching the Insight text
+    df_chart.loc[~df_chart["make"].isin(top_brands), "make"] = "Other"
+
+    # 3. For 'Other' brands, we might want to hide specific models to avoid clutter
+    # If make is 'Other', set model to 'Various'
+    df_chart.loc[df_chart["make"] == "Other", "model"] = "Various"
 
     fig = px.sunburst(
-        data_filtered,
+        df_chart,
         path=["make", "model", "fuel"],
-        title="Market Hierarchy (Click to Explore)",
+        title="Market Hierarchy (Top 10 Brands vs Others)",
         color_discrete_sequence=COLOR_SEQUENCE,
         maxdepth=2
     )
