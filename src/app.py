@@ -3,6 +3,7 @@ import dash_bootstrap_components as dbc
 from src.data_loader import DataLoader
 import src.charts as charts
 from src import constants
+import math
 
 # --- App Initialization ---
 external_stylesheets = [
@@ -19,6 +20,12 @@ brands = loader.get_brands()
 min_year, max_year = loader.get_year_range()
 GLOBAL_AVG_PRICE = data["price"].mean()
 
+# Calculate ranges for sliders
+min_price = math.floor(data["price"].min())
+max_price = math.ceil(data["price"].max())
+min_mileage = math.floor(data["mileage"].min())
+max_mileage = math.ceil(data["mileage"].max())
+
 
 # --- Helper Functions ---
 
@@ -33,18 +40,12 @@ def format_number(value):
 
 
 def create_kpi_card(title, icon_class, id_value, color_hex, tooltip_text):
-    """
-    Creates a KPI card with an info tooltip.
-    Uses direct hex color for consistency with charts.
-    """
     return dbc.Card(
         dbc.CardBody([
             html.Div([
-                # Use inline style for color to match constants.py exactly
                 html.I(className=f"{icon_class} fa-2x mb-3", style={"color": color_hex}),
             ], className="text-center position-relative"),
 
-            # Tooltip Icon
             html.I(
                 className="fa-regular fa-circle-question text-muted position-absolute top-0 end-0 m-2",
                 id=f"tooltip-{id_value}",
@@ -53,7 +54,6 @@ def create_kpi_card(title, icon_class, id_value, color_hex, tooltip_text):
             dbc.Tooltip(tooltip_text, target=f"tooltip-{id_value}", placement="top"),
 
             html.H6(title, className="text-muted text-center text-uppercase", style={"fontSize": "0.8rem"}),
-            # Apply color to the value as well
             html.H3(id=id_value, className="card-text text-center fw-bold", style={"color": color_hex}),
         ]),
         className="shadow-sm border-0 h-100 mb-4 hover-shadow position-relative"
@@ -61,7 +61,6 @@ def create_kpi_card(title, icon_class, id_value, color_hex, tooltip_text):
 
 
 def create_insight_icon(icon_class, bg_color_hex):
-    """ Creates a circular icon container with custom background color """
     return html.Div(
         html.I(className=f"{icon_class} text-white", style={"fontSize": "1.2rem"}),
         className=f"rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm",
@@ -76,7 +75,7 @@ app.layout = html.Div([
     dbc.NavbarSimple(
         brand="AutoScout24 Analytics",
         brand_href="#",
-        color="primary",  # Navbar keeps Bootstrap theme color for structure
+        color="primary",
         dark=True,
         className="mb-4 shadow-sm"
     ),
@@ -115,6 +114,46 @@ app.layout = html.Div([
                             options=[{"label": b, "value": b} for b in brands],
                             multi=True,
                             placeholder="Select brand...",
+                            className="mb-2"
+                        ),
+
+                        # Model (Cascading Filter)
+                        html.Label([html.I(className="fa-solid fa-car-side me-2"), "Model"], className="fw-bold mt-2"),
+                        dcc.Dropdown(
+                            id="filter-model",
+                            options=[],  # Populated by callback
+                            multi=True,
+                            placeholder="Select model...",
+                            disabled=True,  # Enabled only after brand selection
+                            className="mb-3"
+                        ),
+
+                        # Price Range (Fixed: Only Min/Max Marks)
+                        html.Label([html.I(className="fa-solid fa-euro-sign me-2"), "Price Range"],
+                                   className="fw-bold"),
+                        dcc.RangeSlider(
+                            id="filter-price",
+                            min=min_price, max=max_price, step=1000,
+                            value=[min_price, max_price],
+                            marks={
+                                min_price: f"{min_price / 1000:.0f}k",
+                                max_price: f"{max_price / 1000:.0f}k"
+                            },
+                            tooltip={"placement": "bottom", "always_visible": False},
+                            className="mb-3"
+                        ),
+
+                        # Mileage Range (Fixed: Only Min/Max Marks)
+                        html.Label([html.I(className="fa-solid fa-road me-2"), "Mileage Range"], className="fw-bold"),
+                        dcc.RangeSlider(
+                            id="filter-mileage",
+                            min=min_mileage, max=max_mileage, step=5000,
+                            value=[min_mileage, max_mileage],
+                            marks={
+                                min_mileage: f"{min_mileage / 1000:.0f}k",
+                                max_mileage: f"{max_mileage / 1000:.0f}k"
+                            },
+                            tooltip={"placement": "bottom", "always_visible": False},
                             className="mb-3"
                         ),
 
@@ -157,7 +196,7 @@ app.layout = html.Div([
             dbc.Col([
                 dcc.Loading(id="loading", type="cube", color=constants.COLOR_PRIMARY, children=[
 
-                    # KPIs (Always visible)
+                    # KPIs
                     dbc.Row([
                         dbc.Col(
                             create_kpi_card("Total Vehicles", "fa-solid fa-list", "kpi-count", constants.COLOR_PRIMARY,
@@ -201,7 +240,7 @@ app.layout = html.Div([
                             ])
                         ]),
 
-                        # TAB 3: Correlations (Stats)
+                        # TAB 3: Correlations
                         dbc.Tab(label="Correlations", tab_id="tab-stats", children=[
                             html.Br(),
                             dbc.Row([
@@ -238,6 +277,30 @@ app.layout = html.Div([
 
 # --- Callbacks ---
 
+# 1. Callback for Cascading Model Dropdown
+@app.callback(
+    [
+        Output("filter-model", "options"),
+        Output("filter-model", "disabled"),
+        Output("filter-model", "value")  # Added output to clear value
+    ],
+    Input("filter-brand", "value")
+)
+def update_model_options(selected_brands):
+    """ Updates model dropdown based on selected brands and resets selection """
+    if not selected_brands:
+        return [], True, []  # Reset options, disable, clear value
+
+    # Filter data for selected brands and get unique models
+    relevant_models = data[data["make"].isin(selected_brands)]["model"].dropna().unique()
+    sorted_models = sorted(relevant_models)
+
+    options = [{"label": m, "value": m} for m in sorted_models]
+    # Return new options, enable dropdown, and CLEAR previous value (return [])
+    return options, False, []
+
+
+# 2. Main Dashboard Callback
 @app.callback(
     [
         Output("kpi-count", "children"),
@@ -253,18 +316,41 @@ app.layout = html.Div([
     ],
     [
         Input("filter-brand", "value"),
+        Input("filter-model", "value"),
         Input("filter-year", "value"),
+        Input("filter-price", "value"),
+        Input("filter-mileage", "value"),
         Input("filter-fuel", "value"),
         Input("filter-transmission", "value")
     ]
 )
-def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears):
+def update_dashboard(selected_brands, selected_models, year_range, price_range, mileage_range, selected_fuels,
+                     selected_gears):
     data_filtered = data.copy()
 
     # Apply Filters
-    data_filtered = data_filtered[(data_filtered["year"] >= year_range[0]) & (data_filtered["year"] <= year_range[1])]
+    # Year
+    data_filtered = data_filtered[
+        (data_filtered["year"] >= year_range[0]) &
+        (data_filtered["year"] <= year_range[1])
+        ]
+    # Price
+    data_filtered = data_filtered[
+        (data_filtered["price"] >= price_range[0]) &
+        (data_filtered["price"] <= price_range[1])
+        ]
+    # Mileage
+    data_filtered = data_filtered[
+        (data_filtered["mileage"] >= mileage_range[0]) &
+        (data_filtered["mileage"] <= mileage_range[1])
+        ]
+
     if selected_brands:
         data_filtered = data_filtered[data_filtered["make"].isin(selected_brands)]
+
+    if selected_models:
+        data_filtered = data_filtered[data_filtered["model"].isin(selected_models)]
+
     if selected_fuels:
         data_filtered = data_filtered[data_filtered["fuel"].isin(selected_fuels)]
     if selected_gears:
@@ -273,144 +359,102 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
     if data_filtered.empty:
         return "0", "0", "0", "No data available", {}, {}, {}, {}, {}, {}
 
-    # KPIs with new formatting
+    # KPIs
     kpi_count = f"{format_number(len(data_filtered))}"
     kpi_price = f"{format_number(data_filtered['price'].mean())} €"
     kpi_mileage = f"{format_number(data_filtered['mileage'].mean())} km"
 
     # --- Smart Insight Logic ---
-    try:
-        if not data_filtered.empty:
-
-            # Calculations
-            avg_price_selection = data_filtered["price"].mean()
-            if GLOBAL_AVG_PRICE > 0:
-                price_diff_pct = ((avg_price_selection - GLOBAL_AVG_PRICE) / GLOBAL_AVG_PRICE) * 100
-            else:
-                price_diff_pct = 0
-
-            if price_diff_pct > 0:
-                price_status = "Premium"
-                price_desc = "above market avg"
-                price_color = constants.COLOR_DANGER
-            else:
-                price_status = "Budget-Friendly"
-                price_desc = "below market avg"
-                price_color = constants.COLOR_ACCENT
-
-            # Insight Text Generation
-
-            # Case 1: Single Brand Selected
-            if selected_brands and len(selected_brands) == 1:
-                if not data_filtered["model"].dropna().empty:
-                    top_item = data_filtered["model"].value_counts().idxmax()
-                    top_count = data_filtered["model"].value_counts().max()
-                    share = (top_count / len(data_filtered)) * 100
-                    title_text = "Model Analysis"
-                    main_text = "Most Listed Model: "
-                else:
-                    top_item, top_count, share = "N/A", 0, 0
-                    title_text, main_text = "Analysis", "Data N/A"
-
-                insight_content = [
-                    html.P([
-                        main_text,
-                        html.Span(top_item, className="fw-bold", style={"color": constants.COLOR_PRIMARY}),
-                        html.Br(),
-                        html.Small(f"({top_count} listings, {share:.1f}% share)", className="text-muted")
-                    ], className="mb-2"),
-                    html.P([
-                        "Price Positioning: ",
-                        html.Span(f"{price_status}", className="fw-bold", style={"color": price_color}),
-                        html.Br(),
-                        html.Small(f"Avg. price is {abs(price_diff_pct):.1f}% {price_desc}.", className="text-muted")
-                    ], className="mb-0 small border-top pt-2")
-                ]
-                icon = "fa-solid fa-car-side"
-                icon_color = constants.COLOR_PRIMARY
-
-            # Case 2: Multiple Brands Selected
-            elif selected_brands and len(selected_brands) > 1:
-                if not data_filtered["make"].dropna().empty:
-                    top_item = data_filtered["make"].value_counts().idxmax()
-                    top_count = data_filtered["make"].value_counts().max()
-                    share = (top_count / len(data_filtered)) * 100
-                    title_text = "Multi-Brand Comparison"
-                    main_text = "Dominant Brand: "
-                else:
-                    top_item, top_count, share = "N/A", 0, 0
-                    title_text, main_text = "Analysis", "Data N/A"
-
-                insight_content = [
-                    html.P([
-                        main_text,
-                        html.Span(top_item, className="fw-bold", style={"color": constants.COLOR_PRIMARY}),
-                        html.Br(),
-                        html.Small(f"({top_count} listings, {share:.1f}% of selection)", className="text-muted")
-                    ], className="mb-2"),
-                    html.P([
-                        "Group Price Position: ",
-                        html.Span(f"{price_status}", className="fw-bold", style={"color": price_color}),
-                        html.Br(),
-                        html.Small(f"Selection is {abs(price_diff_pct):.1f}% {price_desc}.", className="text-muted")
-                    ], className="mb-0 small border-top pt-2")
-                ]
-                icon = "fa-solid fa-layer-group"
-                icon_color = constants.COLOR_INFO
-
-            # Case 3: Global View
-            else:
-                if not data_filtered["make"].dropna().empty:
-                    top_brand = data_filtered["make"].value_counts().idxmax()
-                    top_brand_count = data_filtered["make"].value_counts().max()
-                    top_brand_share = (top_brand_count / len(data_filtered)) * 100
-                else:
-                    top_brand, top_brand_count, top_brand_share = "N/A", 0, 0
-
-                if not data_filtered["fuel"].dropna().empty:
-                    top_fuel = data_filtered["fuel"].value_counts().idxmax()
-                    fuel_share = (data_filtered["fuel"].value_counts().max() / len(data_filtered)) * 100
-                else:
-                    top_fuel, fuel_share = "N/A", 0
-
-                title_text = "Global Market Trends"
-                insight_content = [
-                    html.P([
-                        "Market Leader: ",
-                        html.Span(top_brand, className="fw-bold", style={"color": constants.COLOR_ACCENT}),
-                        html.Br(),
-                        html.Small(f"({top_brand_count} listings, {top_brand_share:.1f}% share)",
-                                   className="text-muted")
-                    ], className="mb-2"),
-                    html.P([
-                        "Dominant Fuel: ",
-                        html.Span(top_fuel, className="fw-bold text-dark"),
-                        html.Br(),
-                        html.Small(f"Powering {fuel_share:.1f}% of all vehicles.", className="text-muted")
-                    ], className="mb-0 small border-top pt-2")
-                ]
-                icon = "fa-solid fa-chart-pie"
-                icon_color = constants.COLOR_ACCENT
-
-            # Render
-            insight = dbc.Card([
-                dbc.CardBody([
-                    html.Div([
-                        create_insight_icon(icon, icon_color),
-                        html.Div([
-                            html.H5(title_text, className="card-title mb-0"),
-                            html.Small("Key Insight", className="text-muted")
-                        ])
-                    ], className="d-flex align-items-center mb-3"),
-                    html.Div(insight_content)
-                ])
-            ], className="border-0 shadow-sm mb-3", style={"backgroundColor": "#f8f9fa"})
-
+    # NO try-except here - errors will be exposed in console/debug if any
+    if not data_filtered.empty:
+        avg_price_selection = data_filtered["price"].mean()
+        if GLOBAL_AVG_PRICE > 0:
+            price_diff_pct = ((avg_price_selection - GLOBAL_AVG_PRICE) / GLOBAL_AVG_PRICE) * 100
         else:
-            insight = dbc.Alert("No data available", color="warning")
+            price_diff_pct = 0
 
-    except Exception as e:
-        insight = dbc.Alert(f"Insight unavailable.", color="light")
+        price_status = "Premium" if price_diff_pct > 0 else "Budget-Friendly"
+        price_desc = "above market avg" if price_diff_pct > 0 else "below market avg"
+        price_color = constants.COLOR_DANGER if price_diff_pct > 0 else constants.COLOR_ACCENT
+
+        # Case 1: Single Brand Selected
+        if selected_brands and len(selected_brands) == 1:
+            # If models are selected, show specific model info
+            if selected_models and len(selected_models) == 1:
+                target_name = selected_models[0]
+                target_type = "Specific Model"
+                count = len(data_filtered)
+                share = 100
+            elif not data_filtered["model"].dropna().empty:
+                target_name = data_filtered["model"].value_counts().idxmax()
+                count = data_filtered["model"].value_counts().max()
+                share = (count / len(data_filtered)) * 100
+                target_type = "Most Listed Model"
+            else:
+                target_name = "N/A"
+                count, share = 0, 0
+                target_type = "Model"
+
+            insight_content = [
+                html.P([
+                    f"{target_type}: ",
+                    html.Span(target_name, className="fw-bold", style={"color": constants.COLOR_PRIMARY}),
+                    html.Br(),
+                    html.Small(f"({count} listings, {share:.1f}% share)", className="text-muted")
+                ], className="mb-2"),
+                html.P([
+                    "Price Positioning: ",
+                    html.Span(f"{price_status}", className="fw-bold", style={"color": price_color}),
+                    html.Br(),
+                    html.Small(f"Avg. price is {abs(price_diff_pct):.1f}% {price_desc}.", className="text-muted")
+                ], className="mb-0 small border-top pt-2")
+            ]
+            icon = "fa-solid fa-car-side"
+            icon_color = constants.COLOR_PRIMARY
+
+        # Case 2: Multiple Brands or Global
+        else:
+            if not data_filtered["make"].dropna().empty:
+                top_brand = data_filtered["make"].value_counts().idxmax()
+                top_count = data_filtered["make"].value_counts().max()
+                share = (top_count / len(data_filtered)) * 100
+            else:
+                top_brand, top_count, share = "N/A", 0, 0
+
+            title_text = "Multi-Brand Analysis" if selected_brands else "Global Market Trends"
+
+            insight_content = [
+                html.P([
+                    "Dominant Brand: ",
+                    html.Span(top_brand, className="fw-bold", style={"color": constants.COLOR_ACCENT}),
+                    html.Br(),
+                    html.Small(f"({top_count} listings, {share:.1f}% of selection)", className="text-muted")
+                ], className="mb-2"),
+                html.P([
+                    "Price Trend: ",
+                    html.Span(f"{price_status}", className="fw-bold", style={"color": price_color}),
+                    html.Br(),
+                    html.Small(f"Selection is {abs(price_diff_pct):.1f}% {price_desc}.", className="text-muted")
+                ], className="mb-0 small border-top pt-2")
+            ]
+            icon = "fa-solid fa-chart-pie"
+            icon_color = constants.COLOR_ACCENT
+
+        insight = dbc.Card([
+            dbc.CardBody([
+                html.Div([
+                    create_insight_icon(icon, icon_color),
+                    html.Div([
+                        html.H5("Analytic Insight", className="card-title mb-0"),
+                        html.Small("Key Findings", className="text-muted")
+                    ])
+                ], className="d-flex align-items-center mb-3"),
+                html.Div(insight_content)
+            ])
+        ], className="border-0 shadow-sm mb-3", style={"backgroundColor": "#f8f9fa"})
+
+    else:
+        insight = dbc.Alert("No data available", color="warning")
 
     return (
         kpi_count,
