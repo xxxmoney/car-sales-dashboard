@@ -1,45 +1,51 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-from src.constants import THEME_TEMPLATE
+from src.constants import THEME_TEMPLATE, PRIMARY_COLOR, COLOR_SEQUENCE
+
 
 def create_line_chart_price_year(data: pd.DataFrame) -> go.Figure:
-    """ Creates Average Price Evolution over Time line chart """
+    """ Line chart: Price evolution over time """
     if data.empty:
         return go.Figure()
 
+    # Group data by year and calculate average price
     data_trend = data.groupby("year")["price"].mean().reset_index()
 
     line_chart = px.line(
         data_trend, x="year", y="price",
         title="Average Price Evolution (Depreciation)",
         markers=True,
-        template=THEME_TEMPLATE
+        template=THEME_TEMPLATE,
+        color_discrete_sequence=[PRIMARY_COLOR]
     )
 
-    # Tooltip
-    line_chart.update_traces(hovertemplate="Year: %{x}<br>Avg Price: %{y:,.0f} €<extra></extra>")
+    # Tooltip formatting
+    line_chart.update_traces(hovertemplate="Year: %{x}<br>Price: %{y:,.0f} €<extra></extra>")
+
+    # X-axis ticks (integers only)
+    line_chart.update_xaxes(dtick=1)
 
     return line_chart
 
 
 def create_scatter_chart_price_mileage(data: pd.DataFrame) -> go.Figure:
-    """ Creates Price vs. Mileage scatter plot """
+    """ Scatter plot: Price vs. Mileage """
     if data.empty:
         return go.Figure()
 
-    # Make sure index is also a column - so we can access specific car in modal
     data_reset = data.reset_index()
 
     scatter = px.scatter(
         data_reset, x="mileage", y="price", color="fuel",
         title="Price vs. Mileage (Click for details)",
         custom_data=["index", "make", "model", "year", "hp"],
-        opacity=0.6,
-        template=THEME_TEMPLATE
+        opacity=0.7,
+        template=THEME_TEMPLATE,
+        color_discrete_sequence=COLOR_SEQUENCE
     )
 
-    # Tooltip
+    # Tooltip formatting
     scatter.update_traces(
         hovertemplate=(
                 "<b>%{customdata[1]} %{customdata[2]}</b><br>" +
@@ -51,12 +57,13 @@ def create_scatter_chart_price_mileage(data: pd.DataFrame) -> go.Figure:
         )
     )
 
+    # Enable click events
     scatter.update_layout(clickmode="event+select")
     return scatter
 
 
 def create_box_plot_price_brand(data: pd.DataFrame) -> go.Figure:
-    """ Creates Price Distribution by Brand box plot """
+    """ Box plot: Price distribution by brand """
     if data.empty:
         return go.Figure()
 
@@ -64,48 +71,49 @@ def create_box_plot_price_brand(data: pd.DataFrame) -> go.Figure:
         data, x="make", y="price",
         title="Price Distribution by Brand",
         points="outliers",
-        template=THEME_TEMPLATE
+        template=THEME_TEMPLATE,
+        color_discrete_sequence=[PRIMARY_COLOR]
     )
     return box_plot
 
 
 def create_pie_chart_transmission(data: pd.DataFrame) -> go.Figure:
-    """ Creates Transmission share pie chart """
+    """ Pie chart: Transmission types share """
     if data.empty:
         return go.Figure()
 
     pie_chart = px.pie(
         data, names="gear",
-        title="Transmission Share",
-        hole=0.4,
-        template=THEME_TEMPLATE
+        title="Transmission Types",
+        hole=0.5,  # Donut chart style
+        template=THEME_TEMPLATE,
+        color_discrete_sequence=COLOR_SEQUENCE
     )
 
-    # Text label
     pie_chart.update_traces(textinfo="percent+label")
-
     return pie_chart
 
 
 def create_histogram_price(data: pd.DataFrame) -> go.Figure:
-    """ Creates Price frequency distribution histogram """
+    """ Histogram: Price frequency distribution """
     if data.empty:
         return go.Figure()
 
     histogram = px.histogram(
         data, x="price", nbins=50,
-        title="Price Distribution",
-        color_discrete_sequence=["#636EFA"],
-        template=THEME_TEMPLATE
+        title="Market Price Distribution",
+        template=THEME_TEMPLATE,
+        color_discrete_sequence=[PRIMARY_COLOR]
     )
     return histogram
 
 
 def create_heatmap_price_mileage_hp_year(data: pd.DataFrame) -> go.Figure:
-    """ Creates Correlation Matrix heatmap """
+    """ Heatmap: Correlation matrix """
     if data.empty:
         return go.Figure()
 
+    # Select numeric columns only
     numeric_columns = ["price", "mileage", "hp", "year"]
     data_correlation = data[numeric_columns].corr()
 
@@ -113,8 +121,8 @@ def create_heatmap_price_mileage_hp_year(data: pd.DataFrame) -> go.Figure:
         data_correlation,
         text_auto=".2f",
         aspect="auto",
-        title="Correlation Matrix",
-        color_continuous_scale="RdBu_r",
+        title="Correlation Matrix (Variable Relationships)",
+        color_continuous_scale="RdBu_r",  # Red-Blue scale
         template=THEME_TEMPLATE
     )
     return heatmap
