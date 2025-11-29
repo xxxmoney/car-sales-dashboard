@@ -17,6 +17,8 @@ loader = DataLoader()
 data = loader.load_data()
 brands = loader.get_brands()
 min_year, max_year = loader.get_year_range()
+# Calculate global average price for comparison logic
+GLOBAL_AVG_PRICE = data["price"].mean()
 
 
 # --- Components ---
@@ -70,12 +72,12 @@ app.layout = html.Div([
                 dbc.Card([
                     dbc.CardHeader("Filter Data", className="bg-white fw-bold"),
                     dbc.CardBody([
-                        # Smart Insight (New!)
+                        # Smart Insight (Updated Logic)
                         dbc.Alert(
                             id="smart-insight",
                             color="info",
                             className="mb-4 small",
-                            style={"borderLeft": "4px solid #3498DB"}
+                            style={"borderLeft": "4px solid #3498DB", "backgroundColor": "#eef9fd"}
                         ),
 
                         # Brand
@@ -135,7 +137,7 @@ app.layout = html.Div([
                         dbc.Col(create_kpi_card("Avg. Mileage", "fa-solid fa-road", "kpi-mileage", "info"), width=4),
                     ]),
 
-                    # New "Fancy" Sunburst Chart (Full Width)
+                    # Sunburst Chart
                     dbc.Row([
                         dbc.Col(dbc.Card(dcc.Graph(id="graph-sunburst"), className="shadow-sm border-0 mb-4 p-2"),
                                 width=12),
@@ -196,8 +198,8 @@ app.layout = html.Div([
         Output("kpi-count", "children"),
         Output("kpi-price", "children"),
         Output("kpi-mileage", "children"),
-        Output("smart-insight", "children"),  # New Output
-        Output("graph-sunburst", "figure"),  # New Output
+        Output("smart-insight", "children"),
+        Output("graph-sunburst", "figure"),
         Output("graph-line-price-year", "figure"),
         Output("graph-scatter-price-mileage", "figure"),
         Output("graph-box-price-brand", "figure"),
@@ -226,21 +228,54 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
     if data_filtered.empty:
         return "0", "0", "0", "No data available", {}, {}, {}, {}, {}, {}
 
-    # Calculate KPIs
+    # KPIs
     kpi_count = f"{len(data_filtered)}"
     kpi_price = f"{data_filtered['price'].mean():,.0f} €"
     kpi_mileage = f"{data_filtered['mileage'].mean():,.0f} km"
 
-    # Smart Insight Calculation
-    # Finds the most common brand in the current filtered view
+    # --- Smart Insight Logic (Refined) ---
     if not data_filtered.empty:
-        top_brand = data_filtered["make"].value_counts().idxmax()
-        top_brand_count = data_filtered["make"].value_counts().max()
-        share = (top_brand_count / len(data_filtered)) * 100
-        insight = [
-            html.I(className="fa-solid fa-lightbulb me-2"),
-            f"Insight: {top_brand} dominates this selection with {share:.1f}% market share."
-        ]
+        # Case 1: Brands are selected -> Show Model info & Price comparison
+        if selected_brands:
+            # Most popular model in selection
+            top_model = data_filtered["model"].value_counts().idxmax()
+            top_model_count = data_filtered["model"].value_counts().max()
+            model_share = (top_model_count / len(data_filtered)) * 100
+
+            # Price comparison vs Global Market
+            avg_price_selection = data_filtered["price"].mean()
+            price_diff_pct = ((avg_price_selection - GLOBAL_AVG_PRICE) / GLOBAL_AVG_PRICE) * 100
+            price_status = "higher" if price_diff_pct > 0 else "lower"
+
+            # Wrap content in a Div to fix React error
+            insight_content = html.Div([
+                html.Strong(f"Top Model: {top_model}"),
+                f" represents {model_share:.1f}% of selection.",
+                html.Br(),
+                html.Span(f"Price is {abs(price_diff_pct):.1f}% {price_status} than market avg.",
+                          className="text-muted small")
+            ])
+
+        # Case 2: No brand selected (Market View) -> Show Brand Leader & Fuel Trend
+        else:
+            top_brand = data_filtered["make"].value_counts().idxmax()
+            top_brand_share = (data_filtered["make"].value_counts().max() / len(data_filtered)) * 100
+
+            top_fuel = data_filtered["fuel"].value_counts().idxmax()
+
+            # Wrap content in a Div to fix React error
+            insight_content = html.Div([
+                html.Strong(f"Market Leader: {top_brand}"),
+                f" ({top_brand_share:.1f}% share).",
+                html.Br(),
+                f"Dominant fuel type is {top_fuel}."
+            ])
+
+        # Final structure wrapped properly
+        insight = html.Div([
+            html.I(className="fa-solid fa-lightbulb me-2 text-info"),
+            insight_content
+        ], className="d-flex align-items-start")
     else:
         insight = "No data"
 
@@ -249,7 +284,7 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
         kpi_price,
         kpi_mileage,
         insight,
-        charts.create_sunburst_chart(data_filtered),  # New Chart
+        charts.create_sunburst_chart(data_filtered),
         charts.create_line_chart_price_year(data_filtered),
         charts.create_scatter_chart_price_mileage(data_filtered),
         charts.create_box_plot_price_brand(data_filtered),
