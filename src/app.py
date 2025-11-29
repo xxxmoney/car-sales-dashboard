@@ -72,13 +72,8 @@ app.layout = html.Div([
                 dbc.Card([
                     dbc.CardHeader("Filter Data", className="bg-white fw-bold"),
                     dbc.CardBody([
-                        # Smart Insight (Updated Logic)
-                        dbc.Alert(
-                            id="smart-insight",
-                            color="info",
-                            className="mb-4 small",
-                            style={"borderLeft": "4px solid #3498DB", "backgroundColor": "#eef9fd"}
-                        ),
+                        # Smart Insight (Updated Design)
+                        html.Div(id="smart-insight", className="mb-4"),
 
                         # Brand
                         html.Label([html.I(className="fa-solid fa-car me-2"), "Brand"], className="fw-bold mt-2"),
@@ -246,15 +241,29 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
             avg_price_selection = data_filtered["price"].mean()
             price_diff_pct = ((avg_price_selection - GLOBAL_AVG_PRICE) / GLOBAL_AVG_PRICE) * 100
             price_status = "higher" if price_diff_pct > 0 else "lower"
+            price_color = "text-danger" if price_diff_pct > 0 else "text-success"
 
-            # Wrap content in a Div to fix React error
-            insight_content = html.Div([
-                html.Strong(f"Top Model: {top_model}"),
-                f" represents {model_share:.1f}% of selection.",
-                html.Br(),
-                html.Span(f"Price is {abs(price_diff_pct):.1f}% {price_status} than market avg.",
-                          className="text-muted small")
-            ])
+            # Modern Card Style for Insight
+            insight = dbc.Card([
+                dbc.CardBody([
+                    html.Div([
+                        html.Span(html.I(className="fa-solid fa-car-side"),
+                                  className="icon-circle bg-primary text-white p-2 rounded-circle me-3"),
+                        html.H5("Model Insight", className="card-title d-inline-block mb-0")
+                    ], className="d-flex align-items-center mb-3"),
+
+                    html.P([
+                        "Top Model: ", html.Span(top_model, className="fw-bold text-primary"),
+                        html.Br(),
+                        html.Small(f"({model_share:.1f}% of selection)", className="text-muted")
+                    ], className="mb-2"),
+
+                    html.P([
+                        "Price vs Market: ",
+                        html.Span(f"{abs(price_diff_pct):.1f}% {price_status}", className=f"fw-bold {price_color}")
+                    ], className="mb-0 small border-top pt-2")
+                ])
+            ], className="border-0 shadow-sm mb-3", style={"backgroundColor": "#f8f9fa"})
 
         # Case 2: No brand selected (Market View) -> Show Brand Leader & Fuel Trend
         else:
@@ -263,21 +272,30 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
 
             top_fuel = data_filtered["fuel"].value_counts().idxmax()
 
-            # Wrap content in a Div to fix React error
-            insight_content = html.Div([
-                html.Strong(f"Market Leader: {top_brand}"),
-                f" ({top_brand_share:.1f}% share).",
-                html.Br(),
-                f"Dominant fuel type is {top_fuel}."
-            ])
+            # Modern Card Style for Insight
+            insight = dbc.Card([
+                dbc.CardBody([
+                    html.Div([
+                        html.Span(html.I(className="fa-solid fa-chart-line"),
+                                  className="icon-circle bg-success text-white p-2 rounded-circle me-3"),
+                        html.H5("Market Insight", className="card-title d-inline-block mb-0")
+                    ], className="d-flex align-items-center mb-3"),
 
-        # Final structure wrapped properly
-        insight = html.Div([
-            html.I(className="fa-solid fa-lightbulb me-2 text-info"),
-            insight_content
-        ], className="d-flex align-items-start")
+                    html.P([
+                        "Market Leader: ", html.Span(top_brand, className="fw-bold text-success"),
+                        html.Br(),
+                        html.Small(f"({top_brand_share:.1f}% share)", className="text-muted")
+                    ], className="mb-2"),
+
+                    html.P([
+                        "Dominant Fuel: ",
+                        html.Span(top_fuel, className="fw-bold text-dark")
+                    ], className="mb-0 small border-top pt-2")
+                ])
+            ], className="border-0 shadow-sm mb-3", style={"backgroundColor": "#f8f9fa"})
+
     else:
-        insight = "No data"
+        insight = dbc.Alert("No data available", color="warning")
 
     return (
         kpi_count,
