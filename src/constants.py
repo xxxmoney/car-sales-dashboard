@@ -1,14 +1,24 @@
-
 # Dataset path
 DATA_SET_PATH: str = "data/autoscout24-germany-dataset.csv"
 
 # Chart theme
 THEME_TEMPLATE: str = "plotly_white"
 
-# Color palette
-PRIMARY_COLOR: str = "#4C72B0"    # Muted Blue (Primary)
-SECONDARY_COLOR: str = "#DD8452"  # Muted Orange (Secondary/Highlight)
-ACCENT_COLOR: str = "#55A868"     # Muted Green (Positive/Accent)
+# --- Modern Color Palette (Flat UI) ---
+# Professional, high-contrast colors suitable for presentations
+COLOR_PRIMARY = "#2C3E50"      # Dark Blue (Base/Text)
+COLOR_SECONDARY = "#E67E22"    # Carrot Orange (Highlights/Buttons)
+COLOR_ACCENT = "#18BC9C"       # Teal (Positive indicators)
+COLOR_INFO = "#3498DB"         # Light Blue (Neutral info)
+COLOR_DANGER = "#E74C3C"       # Red (Warnings/High price)
 
-# Color sequence for categories (mileage, transmission)
-COLOR_SEQUENCE = [PRIMARY_COLOR, SECONDARY_COLOR, ACCENT_COLOR, "#C44E52", "#8172B3"]
+# Specific chart sequences
+# A harmonized sequence for categories
+COLOR_SEQUENCE = [
+    COLOR_PRIMARY,
+    COLOR_SECONDARY,
+    COLOR_ACCENT,
+    COLOR_INFO,
+    "#F1C40F", # Yellow
+    "#9B59B6"  # Purple
+]
