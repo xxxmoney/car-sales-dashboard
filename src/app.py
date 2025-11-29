@@ -17,7 +17,6 @@ loader = DataLoader()
 data = loader.load_data()
 brands = loader.get_brands()
 min_year, max_year = loader.get_year_range()
-# Calculate global average price for comparison logic
 GLOBAL_AVG_PRICE = data["price"].mean()
 
 
@@ -36,6 +35,15 @@ def create_kpi_card(title, icon_class, id_value, color):
     )
 
 
+def create_insight_icon(icon_class, color_bg):
+    """ Helper ensures the icon is always a perfect circle """
+    return html.Div(
+        html.I(className=f"{icon_class} text-white", style={"fontSize": "1.2rem"}),
+        className=f"rounded-circle bg-{color_bg} d-flex align-items-center justify-content-center me-3 shadow-sm",
+        style={"minWidth": "45px", "height": "45px"}  # Fixed dimensions prevent deformation
+    )
+
+
 # --- Main Layout ---
 app.layout = html.Div([
 
@@ -50,7 +58,7 @@ app.layout = html.Div([
 
     dbc.Container([
 
-        # 2. Header Section
+        # 2. Header
         dbc.Row([
             dbc.Col([
                 html.H2("Market Overview", className="fw-light"),
@@ -72,7 +80,7 @@ app.layout = html.Div([
                 dbc.Card([
                     dbc.CardHeader("Filter Data", className="bg-white fw-bold"),
                     dbc.CardBody([
-                        # Smart Insight (Updated Design)
+                        # Smart Insight Container
                         html.Div(id="smart-insight", className="mb-4"),
 
                         # Brand
@@ -124,7 +132,7 @@ app.layout = html.Div([
             dbc.Col([
                 dcc.Loading(id="loading", type="dot", children=[
 
-                    # KPIs
+                    # KPIs (Always visible)
                     dbc.Row([
                         dbc.Col(create_kpi_card("Total Vehicles", "fa-solid fa-list", "kpi-count", "primary"), width=4),
                         dbc.Col(create_kpi_card("Avg. Price", "fa-solid fa-euro-sign", "kpi-price", "success"),
@@ -132,36 +140,49 @@ app.layout = html.Div([
                         dbc.Col(create_kpi_card("Avg. Mileage", "fa-solid fa-road", "kpi-mileage", "info"), width=4),
                     ]),
 
-                    # Sunburst Chart
-                    dbc.Row([
-                        dbc.Col(dbc.Card(dcc.Graph(id="graph-sunburst"), className="shadow-sm border-0 mb-4 p-2"),
-                                width=12),
-                    ]),
+                    # TABS Section
+                    dbc.Tabs([
 
-                    # Charts Row 1
-                    dbc.Row([
-                        dbc.Col(
-                            dbc.Card(dcc.Graph(id="graph-line-price-year"), className="shadow-sm border-0 mb-4 p-2"),
-                            lg=8),
-                        dbc.Col(
-                            dbc.Card(dcc.Graph(id="graph-pie-transmission"), className="shadow-sm border-0 mb-4 p-2"),
-                            lg=4),
-                    ]),
+                        # TAB 1: General Overview
+                        dbc.Tab(label="Market Overview", tab_id="tab-overview", children=[
+                            html.Br(),
+                            dbc.Row([
+                                dbc.Col(
+                                    dbc.Card(dcc.Graph(id="graph-sunburst"), className="shadow-sm border-0 mb-4 p-2"),
+                                    width=12),
+                            ]),
+                            dbc.Row([
+                                dbc.Col(dbc.Card(dcc.Graph(id="graph-line-price-year"),
+                                                 className="shadow-sm border-0 mb-4 p-2"), lg=8),
+                                dbc.Col(dbc.Card(dcc.Graph(id="graph-pie-transmission"),
+                                                 className="shadow-sm border-0 mb-4 p-2"), lg=4),
+                            ])
+                        ]),
 
-                    # Charts Row 2
-                    dbc.Row([
-                        dbc.Col(dbc.Card(dcc.Graph(id="graph-scatter-price-mileage"),
-                                         className="shadow-sm border-0 mb-4 p-2"), lg=12),
-                    ]),
+                        # TAB 2: Detailed Analysis
+                        dbc.Tab(label="Price & Performance Analysis", tab_id="tab-analysis", children=[
+                            html.Br(),
+                            dbc.Row([
+                                dbc.Col(dbc.Card(dcc.Graph(id="graph-scatter-price-mileage"),
+                                                 className="shadow-sm border-0 mb-4 p-2"), width=12),
+                            ]),
+                            dbc.Row([
+                                dbc.Col(dbc.Card(dcc.Graph(id="graph-box-price-brand"),
+                                                 className="shadow-sm border-0 mb-4 p-2"), width=12),
+                            ])
+                        ]),
 
-                    # Charts Row 3
-                    dbc.Row([
-                        dbc.Col(
-                            dbc.Card(dcc.Graph(id="graph-box-price-brand"), className="shadow-sm border-0 mb-4 p-2"),
-                            lg=6),
-                        dbc.Col(dbc.Card(dcc.Graph(id="graph-heatmap-price-mileage-hp-year"),
-                                         className="shadow-sm border-0 mb-4 p-2"), lg=6),
-                    ])
+                        # TAB 3: Correlations (Stats)
+                        dbc.Tab(label="Correlations", tab_id="tab-stats", children=[
+                            html.Br(),
+                            dbc.Row([
+                                dbc.Col(dbc.Card(dcc.Graph(id="graph-heatmap-price-mileage-hp-year"),
+                                                 className="shadow-sm border-0 mb-4 p-2"), width=12),
+                            ])
+                        ]),
+
+                    ], id="tabs", active_tab="tab-overview", className="mb-3")
+
                 ])
             ], xs=12, lg=9)
         ]),
@@ -228,28 +249,26 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
     kpi_price = f"{data_filtered['price'].mean():,.0f} €"
     kpi_mileage = f"{data_filtered['mileage'].mean():,.0f} km"
 
-    # --- Smart Insight Logic (Refined) ---
+    # --- Smart Insight Logic ---
     if not data_filtered.empty:
-        # Case 1: Brands are selected -> Show Model info & Price comparison
         if selected_brands:
-            # Most popular model in selection
             top_model = data_filtered["model"].value_counts().idxmax()
             top_model_count = data_filtered["model"].value_counts().max()
             model_share = (top_model_count / len(data_filtered)) * 100
 
-            # Price comparison vs Global Market
             avg_price_selection = data_filtered["price"].mean()
             price_diff_pct = ((avg_price_selection - GLOBAL_AVG_PRICE) / GLOBAL_AVG_PRICE) * 100
             price_status = "higher" if price_diff_pct > 0 else "lower"
             price_color = "text-danger" if price_diff_pct > 0 else "text-success"
 
-            # Modern Card Style for Insight
             insight = dbc.Card([
                 dbc.CardBody([
                     html.Div([
-                        html.Span(html.I(className="fa-solid fa-car-side"),
-                                  className="icon-circle bg-primary text-white p-2 rounded-circle me-3"),
-                        html.H5("Model Insight", className="card-title d-inline-block mb-0")
+                        create_insight_icon("fa-solid fa-car-side", "primary"),
+                        html.Div([
+                            html.H5("Model Insight", className="card-title mb-0"),
+                            html.Small("Selection Analysis", className="text-muted")
+                        ])
                     ], className="d-flex align-items-center mb-3"),
 
                     html.P([
@@ -265,20 +284,19 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
                 ])
             ], className="border-0 shadow-sm mb-3", style={"backgroundColor": "#f8f9fa"})
 
-        # Case 2: No brand selected (Market View) -> Show Brand Leader & Fuel Trend
         else:
             top_brand = data_filtered["make"].value_counts().idxmax()
             top_brand_share = (data_filtered["make"].value_counts().max() / len(data_filtered)) * 100
-
             top_fuel = data_filtered["fuel"].value_counts().idxmax()
 
-            # Modern Card Style for Insight
             insight = dbc.Card([
                 dbc.CardBody([
                     html.Div([
-                        html.Span(html.I(className="fa-solid fa-chart-line"),
-                                  className="icon-circle bg-success text-white p-2 rounded-circle me-3"),
-                        html.H5("Market Insight", className="card-title d-inline-block mb-0")
+                        create_insight_icon("fa-solid fa-chart-line", "success"),
+                        html.Div([
+                            html.H5("Market Insight", className="card-title mb-0"),
+                            html.Small("Global Trends", className="text-muted")
+                        ])
                     ], className="d-flex align-items-center mb-3"),
 
                     html.P([
