@@ -5,7 +5,6 @@ import src.charts as charts
 from src import constants
 
 # --- App Initialization ---
-# Using Font Awesome for icons
 external_stylesheets = [
     dbc.themes.FLATLY,
     "https://use.fontawesome.com/releases/v6.4.0/css/all.css"
@@ -23,7 +22,6 @@ min_year, max_year = loader.get_year_range()
 # --- Components ---
 
 def create_kpi_card(title, icon_class, id_value, color):
-    """ Helper to create consistent, modern KPI cards """
     return dbc.Card(
         dbc.CardBody([
             html.Div([
@@ -57,7 +55,6 @@ app.layout = html.Div([
                 html.P("Real-time analysis of used car sales data.", className="text-muted")
             ], width=8),
             dbc.Col([
-                # Placeholder for potential future controls or info
                 html.Div(className="text-end text-muted", children=[
                     html.I(className="fa-regular fa-clock me-2"),
                     "Data Status: Up to date"
@@ -73,6 +70,14 @@ app.layout = html.Div([
                 dbc.Card([
                     dbc.CardHeader("Filter Data", className="bg-white fw-bold"),
                     dbc.CardBody([
+                        # Smart Insight (New!)
+                        dbc.Alert(
+                            id="smart-insight",
+                            color="info",
+                            className="mb-4 small",
+                            style={"borderLeft": "4px solid #3498DB"}
+                        ),
+
                         # Brand
                         html.Label([html.I(className="fa-solid fa-car me-2"), "Brand"], className="fw-bold mt-2"),
                         dcc.Dropdown(
@@ -130,6 +135,12 @@ app.layout = html.Div([
                         dbc.Col(create_kpi_card("Avg. Mileage", "fa-solid fa-road", "kpi-mileage", "info"), width=4),
                     ]),
 
+                    # New "Fancy" Sunburst Chart (Full Width)
+                    dbc.Row([
+                        dbc.Col(dbc.Card(dcc.Graph(id="graph-sunburst"), className="shadow-sm border-0 mb-4 p-2"),
+                                width=12),
+                    ]),
+
                     # Charts Row 1
                     dbc.Row([
                         dbc.Col(
@@ -175,7 +186,7 @@ app.layout = html.Div([
         ),
     ], id="car-modal", is_open=False, size="lg", centered=True),
 
-], style={"backgroundColor": "#f8f9fa", "minHeight": "100vh"})  # Light grey background for whole page
+], style={"backgroundColor": "#f8f9fa", "minHeight": "100vh"})
 
 
 # --- Callbacks ---
@@ -185,11 +196,12 @@ app.layout = html.Div([
         Output("kpi-count", "children"),
         Output("kpi-price", "children"),
         Output("kpi-mileage", "children"),
+        Output("smart-insight", "children"),  # New Output
+        Output("graph-sunburst", "figure"),  # New Output
         Output("graph-line-price-year", "figure"),
         Output("graph-scatter-price-mileage", "figure"),
         Output("graph-box-price-brand", "figure"),
         Output("graph-pie-transmission", "figure"),
-        # Output("graph-histogram-price", "figure"), # Temporarily removed to save space or can be re-added
         Output("graph-heatmap-price-mileage-hp-year", "figure")
     ],
     [
@@ -202,7 +214,7 @@ app.layout = html.Div([
 def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears):
     data_filtered = data.copy()
 
-    # Filters
+    # Apply Filters
     data_filtered = data_filtered[(data_filtered["year"] >= year_range[0]) & (data_filtered["year"] <= year_range[1])]
     if selected_brands:
         data_filtered = data_filtered[data_filtered["make"].isin(selected_brands)]
@@ -212,22 +224,36 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
         data_filtered = data_filtered[data_filtered["gear"].isin(selected_gears)]
 
     if data_filtered.empty:
-        return "0", "0", "0", {}, {}, {}, {}, {}
+        return "0", "0", "0", "No data available", {}, {}, {}, {}, {}, {}
 
-    # Format KPIs
+    # Calculate KPIs
     kpi_count = f"{len(data_filtered)}"
     kpi_price = f"{data_filtered['price'].mean():,.0f} €"
     kpi_mileage = f"{data_filtered['mileage'].mean():,.0f} km"
+
+    # Smart Insight Calculation
+    # Finds the most common brand in the current filtered view
+    if not data_filtered.empty:
+        top_brand = data_filtered["make"].value_counts().idxmax()
+        top_brand_count = data_filtered["make"].value_counts().max()
+        share = (top_brand_count / len(data_filtered)) * 100
+        insight = [
+            html.I(className="fa-solid fa-lightbulb me-2"),
+            f"Insight: {top_brand} dominates this selection with {share:.1f}% market share."
+        ]
+    else:
+        insight = "No data"
 
     return (
         kpi_count,
         kpi_price,
         kpi_mileage,
+        insight,
+        charts.create_sunburst_chart(data_filtered),  # New Chart
         charts.create_line_chart_price_year(data_filtered),
         charts.create_scatter_chart_price_mileage(data_filtered),
         charts.create_box_plot_price_brand(data_filtered),
         charts.create_pie_chart_transmission(data_filtered),
-        # charts.create_histogram_price(data_filtered),
         charts.create_heatmap_price_mileage_hp_year(data_filtered)
     )
 

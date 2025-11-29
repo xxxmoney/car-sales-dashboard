@@ -31,8 +31,8 @@ def create_line_chart_price_year(data: pd.DataFrame) -> go.Figure:
     )
 
     fig.update_traces(line_color=COLOR_PRIMARY, line_width=3, marker_size=8)
-    fig.update_xaxes(dtick=1, showgrid=False)  # Clean X axis
-    fig.update_yaxes(showgrid=True, gridcolor="#eee")  # Subtle Y grid
+    fig.update_xaxes(dtick=1, showgrid=False)
+    fig.update_yaxes(showgrid=True, gridcolor="#eee")
 
     return _update_layout(fig)
 
@@ -77,24 +77,43 @@ def create_pie_chart_transmission(data: pd.DataFrame) -> go.Figure:
     fig = px.pie(
         data, names="gear",
         title="Transmission Market Share",
-        hole=0.6,  # Thinner donut looks more modern
+        hole=0.6,
         color_discrete_sequence=COLOR_SEQUENCE
     )
     fig.update_traces(textinfo="percent")
     return _update_layout(fig)
 
 
-def create_histogram_price(data: pd.DataFrame) -> go.Figure:
-    """ Histogram: Price Distribution """
+def create_sunburst_chart(data: pd.DataFrame) -> go.Figure:
+    """
+    Sunburst Chart: Hierarchical view of the market
+    Brand -> Model -> Fuel
+    """
     if data.empty:
         return go.Figure()
 
-    fig = px.histogram(
-        data, x="price", nbins=50,
-        title="Price Frequency Distribution",
-        color_discrete_sequence=[COLOR_SECONDARY]  # Orange for contrast
+    # --- FIX START: Drop rows with missing values in path columns ---
+    # Sunburst fails if 'model' is missing but 'fuel' is present (broken hierarchy)
+    # We create a copy to avoid SettingWithCopyWarning on the original dataframe
+    clean_data = data.dropna(subset=["make", "model", "fuel"]).copy()
+
+    if clean_data.empty:
+        return go.Figure()
+    # --- FIX END ---
+
+    # We limit to top 15 brands to keep the chart readable
+    top_brands = clean_data["make"].value_counts().nlargest(15).index
+    data_filtered = clean_data[clean_data["make"].isin(top_brands)]
+
+    fig = px.sunburst(
+        data_filtered,
+        path=["make", "model", "fuel"],
+        title="Market Hierarchy (Click to Explore)",
+        color_discrete_sequence=COLOR_SEQUENCE,
+        maxdepth=2
     )
-    fig.update_layout(bargap=0.1)
+
+    fig.update_traces(textinfo="label+percent entry")
     return _update_layout(fig)
 
 
