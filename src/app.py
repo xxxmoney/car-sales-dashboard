@@ -20,27 +20,52 @@ min_year, max_year = loader.get_year_range()
 GLOBAL_AVG_PRICE = data["price"].mean()
 
 
-# --- Components ---
+# --- Helper Functions ---
 
-def create_kpi_card(title, icon_class, id_value, color):
+def format_number(value):
+    """ Formats large numbers to human-readable string (e.g. 1.2k, 1.5M) """
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}M"
+    elif value >= 1_000:
+        return f"{value / 1_000:.1f}k"
+    else:
+        return f"{value:.0f}"
+
+
+def create_kpi_card(title, icon_class, id_value, color_hex, tooltip_text):
+    """
+    Creates a KPI card with an info tooltip.
+    Uses direct hex color for consistency with charts.
+    """
     return dbc.Card(
         dbc.CardBody([
             html.Div([
-                html.I(className=f"{icon_class} fa-2x text-{color} mb-3"),
-            ], className="text-center"),
+                # Use inline style for color to match constants.py exactly
+                html.I(className=f"{icon_class} fa-2x mb-3", style={"color": color_hex}),
+            ], className="text-center position-relative"),
+
+            # Tooltip Icon
+            html.I(
+                className="fa-regular fa-circle-question text-muted position-absolute top-0 end-0 m-2",
+                id=f"tooltip-{id_value}",
+                style={"cursor": "pointer", "fontSize": "0.9rem"}
+            ),
+            dbc.Tooltip(tooltip_text, target=f"tooltip-{id_value}", placement="top"),
+
             html.H6(title, className="text-muted text-center text-uppercase", style={"fontSize": "0.8rem"}),
-            html.H3(id=id_value, className="card-text text-center fw-bold"),
+            # Apply color to the value as well
+            html.H3(id=id_value, className="card-text text-center fw-bold", style={"color": color_hex}),
         ]),
-        className="shadow-sm border-0 h-100 mb-4 hover-shadow"
+        className="shadow-sm border-0 h-100 mb-4 hover-shadow position-relative"
     )
 
 
-def create_insight_icon(icon_class, color_bg):
-    """ Helper ensures the icon is always a perfect circle """
+def create_insight_icon(icon_class, bg_color_hex):
+    """ Creates a circular icon container with custom background color """
     return html.Div(
         html.I(className=f"{icon_class} text-white", style={"fontSize": "1.2rem"}),
-        className=f"rounded-circle bg-{color_bg} d-flex align-items-center justify-content-center me-3 shadow-sm",
-        style={"minWidth": "45px", "height": "45px"}  # Fixed dimensions prevent deformation
+        className=f"rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm",
+        style={"minWidth": "45px", "height": "45px", "backgroundColor": bg_color_hex}
     )
 
 
@@ -51,7 +76,7 @@ app.layout = html.Div([
     dbc.NavbarSimple(
         brand="AutoScout24 Analytics",
         brand_href="#",
-        color="primary",
+        color="primary",  # Navbar keeps Bootstrap theme color for structure
         dark=True,
         className="mb-4 shadow-sm"
     ),
@@ -130,14 +155,18 @@ app.layout = html.Div([
 
             # --- RIGHT PANEL: VISUALIZATIONS ---
             dbc.Col([
-                dcc.Loading(id="loading", type="dot", children=[
+                dcc.Loading(id="loading", type="cube", color=constants.COLOR_PRIMARY, children=[
 
                     # KPIs (Always visible)
                     dbc.Row([
-                        dbc.Col(create_kpi_card("Total Vehicles", "fa-solid fa-list", "kpi-count", "primary"), width=4),
-                        dbc.Col(create_kpi_card("Avg. Price", "fa-solid fa-euro-sign", "kpi-price", "success"),
-                                width=4),
-                        dbc.Col(create_kpi_card("Avg. Mileage", "fa-solid fa-road", "kpi-mileage", "info"), width=4),
+                        dbc.Col(
+                            create_kpi_card("Total Vehicles", "fa-solid fa-list", "kpi-count", constants.COLOR_PRIMARY,
+                                            "Total number of cars matching current filters."), width=4),
+                        dbc.Col(
+                            create_kpi_card("Avg. Price", "fa-solid fa-euro-sign", "kpi-price", constants.COLOR_ACCENT,
+                                            "Average listing price for the selected cars."), width=4),
+                        dbc.Col(create_kpi_card("Avg. Mileage", "fa-solid fa-road", "kpi-mileage", constants.COLOR_INFO,
+                                                "Average mileage (km) for the selected cars."), width=4),
                     ]),
 
                     # TABS Section
@@ -244,16 +273,16 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
     if data_filtered.empty:
         return "0", "0", "0", "No data available", {}, {}, {}, {}, {}, {}
 
-    # KPIs
-    kpi_count = f"{len(data_filtered)}"
-    kpi_price = f"{data_filtered['price'].mean():,.0f} €"
-    kpi_mileage = f"{data_filtered['mileage'].mean():,.0f} km"
+    # KPIs with new formatting
+    kpi_count = f"{format_number(len(data_filtered))}"
+    kpi_price = f"{format_number(data_filtered['price'].mean())} €"
+    kpi_mileage = f"{format_number(data_filtered['mileage'].mean())} km"
 
-    # --- Smart Insight Logic (Robust & Context-Aware) ---
+    # --- Smart Insight Logic ---
     try:
         if not data_filtered.empty:
 
-            # --- Common Calculations (Price Positioning) ---
+            # Calculations
             avg_price_selection = data_filtered["price"].mean()
             if GLOBAL_AVG_PRICE > 0:
                 price_diff_pct = ((avg_price_selection - GLOBAL_AVG_PRICE) / GLOBAL_AVG_PRICE) * 100
@@ -263,15 +292,15 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
             if price_diff_pct > 0:
                 price_status = "Premium"
                 price_desc = "above market avg"
-                price_color = "text-danger"
+                price_color = constants.COLOR_DANGER
             else:
                 price_status = "Budget-Friendly"
                 price_desc = "below market avg"
-                price_color = "text-success"
+                price_color = constants.COLOR_ACCENT
 
-            # --- Insight Text Generation ---
+            # Insight Text Generation
 
-            # Case 1: Single Brand Selected -> Drill down to MODEL
+            # Case 1: Single Brand Selected
             if selected_brands and len(selected_brands) == 1:
                 if not data_filtered["model"].dropna().empty:
                     top_item = data_filtered["model"].value_counts().idxmax()
@@ -286,21 +315,21 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
                 insight_content = [
                     html.P([
                         main_text,
-                        html.Span(top_item, className="fw-bold text-primary"),
+                        html.Span(top_item, className="fw-bold", style={"color": constants.COLOR_PRIMARY}),
                         html.Br(),
                         html.Small(f"({top_count} listings, {share:.1f}% share)", className="text-muted")
                     ], className="mb-2"),
                     html.P([
                         "Price Positioning: ",
-                        html.Span(f"{price_status}", className=f"fw-bold {price_color}"),
+                        html.Span(f"{price_status}", className="fw-bold", style={"color": price_color}),
                         html.Br(),
                         html.Small(f"Avg. price is {abs(price_diff_pct):.1f}% {price_desc}.", className="text-muted")
                     ], className="mb-0 small border-top pt-2")
                 ]
                 icon = "fa-solid fa-car-side"
-                icon_color = "primary"
+                icon_color = constants.COLOR_PRIMARY
 
-            # Case 2: Multiple Brands Selected -> Compare BRANDS within selection
+            # Case 2: Multiple Brands Selected
             elif selected_brands and len(selected_brands) > 1:
                 if not data_filtered["make"].dropna().empty:
                     top_item = data_filtered["make"].value_counts().idxmax()
@@ -315,21 +344,21 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
                 insight_content = [
                     html.P([
                         main_text,
-                        html.Span(top_item, className="fw-bold text-primary"),
+                        html.Span(top_item, className="fw-bold", style={"color": constants.COLOR_PRIMARY}),
                         html.Br(),
                         html.Small(f"({top_count} listings, {share:.1f}% of selection)", className="text-muted")
                     ], className="mb-2"),
                     html.P([
                         "Group Price Position: ",
-                        html.Span(f"{price_status}", className=f"fw-bold {price_color}"),
+                        html.Span(f"{price_status}", className="fw-bold", style={"color": price_color}),
                         html.Br(),
                         html.Small(f"Selection is {abs(price_diff_pct):.1f}% {price_desc}.", className="text-muted")
                     ], className="mb-0 small border-top pt-2")
                 ]
                 icon = "fa-solid fa-layer-group"
-                icon_color = "info"
+                icon_color = constants.COLOR_INFO
 
-            # Case 3: No Brand Selected (Global View) -> Market Leader
+            # Case 3: Global View
             else:
                 if not data_filtered["make"].dropna().empty:
                     top_brand = data_filtered["make"].value_counts().idxmax()
@@ -348,7 +377,7 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
                 insight_content = [
                     html.P([
                         "Market Leader: ",
-                        html.Span(top_brand, className="fw-bold text-success"),
+                        html.Span(top_brand, className="fw-bold", style={"color": constants.COLOR_ACCENT}),
                         html.Br(),
                         html.Small(f"({top_brand_count} listings, {top_brand_share:.1f}% share)",
                                    className="text-muted")
@@ -361,9 +390,9 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
                     ], className="mb-0 small border-top pt-2")
                 ]
                 icon = "fa-solid fa-chart-pie"
-                icon_color = "success"
+                icon_color = constants.COLOR_ACCENT
 
-            # Render the Card
+            # Render
             insight = dbc.Card([
                 dbc.CardBody([
                     html.Div([
