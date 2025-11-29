@@ -20,11 +20,12 @@ brands = loader.get_brands()
 min_year, max_year = loader.get_year_range()
 GLOBAL_AVG_PRICE = data["price"].mean()
 
-# Calculate ranges for sliders
+# Calculate robust ranges for sliders (cutting off extreme outliers)
+# Using 98th percentile prevents 1-2 extreme cars from ruining the slider scale
 min_price = math.floor(data["price"].min())
-max_price = math.ceil(data["price"].max())
+max_price = math.ceil(data["price"].quantile(0.98))
 min_mileage = math.floor(data["mileage"].min())
-max_mileage = math.ceil(data["mileage"].max())
+max_mileage = math.ceil(data["mileage"].quantile(0.98))
 
 
 # --- Helper Functions ---
@@ -137,7 +138,7 @@ app.layout = html.Div([
                             value=[min_price, max_price],
                             marks={
                                 min_price: f"{min_price / 1000:.0f}k",
-                                max_price: f"{max_price / 1000:.0f}k"
+                                max_price: f"{max_price / 1000:.0f}k+"
                             },
                             tooltip={"placement": "bottom", "always_visible": False},
                             className="mb-3"
@@ -151,7 +152,7 @@ app.layout = html.Div([
                             value=[min_mileage, max_mileage],
                             marks={
                                 min_mileage: f"{min_mileage / 1000:.0f}k",
-                                max_mileage: f"{max_mileage / 1000:.0f}k"
+                                max_mileage: f"{max_mileage / 1000:.0f}k+"
                             },
                             tooltip={"placement": "bottom", "always_visible": False},
                             className="mb-3"
@@ -334,16 +335,24 @@ def update_dashboard(selected_brands, selected_models, year_range, price_range, 
         (data_filtered["year"] >= year_range[0]) &
         (data_filtered["year"] <= year_range[1])
         ]
-    # Price
-    data_filtered = data_filtered[
-        (data_filtered["price"] >= price_range[0]) &
-        (data_filtered["price"] <= price_range[1])
-        ]
-    # Mileage
-    data_filtered = data_filtered[
-        (data_filtered["mileage"] >= mileage_range[0]) &
-        (data_filtered["mileage"] <= mileage_range[1])
-        ]
+    # Price (Robust filtering: allow values slightly above slider max to capture edge cases)
+    # If the user selects the absolute max on slider, include everything above it too (the 2% outliers)
+    if price_range[1] >= max_price:
+        data_filtered = data_filtered[data_filtered["price"] >= price_range[0]]
+    else:
+        data_filtered = data_filtered[
+            (data_filtered["price"] >= price_range[0]) &
+            (data_filtered["price"] <= price_range[1])
+            ]
+
+    # Mileage (Same logic for outliers)
+    if mileage_range[1] >= max_mileage:
+        data_filtered = data_filtered[data_filtered["mileage"] >= mileage_range[0]]
+    else:
+        data_filtered = data_filtered[
+            (data_filtered["mileage"] >= mileage_range[0]) &
+            (data_filtered["mileage"] <= mileage_range[1])
+            ]
 
     if selected_brands:
         data_filtered = data_filtered[data_filtered["make"].isin(selected_brands)]
