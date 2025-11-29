@@ -249,71 +249,120 @@ def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears
     kpi_price = f"{data_filtered['price'].mean():,.0f} €"
     kpi_mileage = f"{data_filtered['mileage'].mean():,.0f} km"
 
-    # --- Smart Insight Logic ---
-    if not data_filtered.empty:
-        if selected_brands:
-            top_model = data_filtered["model"].value_counts().idxmax()
-            top_model_count = data_filtered["model"].value_counts().max()
-            model_share = (top_model_count / len(data_filtered)) * 100
+    # --- Smart Insight Logic (Refined & Protected) ---
+    try:
+        if not data_filtered.empty:
+            # 1. SCENARIO: Specific Brand(s) Selected
+            if selected_brands:
+                # Check if we have valid model data
+                if not data_filtered["model"].dropna().empty:
+                    top_model = data_filtered["model"].value_counts().idxmax()
+                    top_model_count = data_filtered["model"].value_counts().max()
+                    model_share = (top_model_count / len(data_filtered)) * 100
+                else:
+                    top_model = "N/A"
+                    top_model_count = 0
+                    model_share = 0
 
-            avg_price_selection = data_filtered["price"].mean()
-            price_diff_pct = ((avg_price_selection - GLOBAL_AVG_PRICE) / GLOBAL_AVG_PRICE) * 100
-            price_status = "higher" if price_diff_pct > 0 else "lower"
-            price_color = "text-danger" if price_diff_pct > 0 else "text-success"
+                # Price positioning calculation
+                avg_price_selection = data_filtered["price"].mean()
+                if GLOBAL_AVG_PRICE > 0:
+                    price_diff_pct = ((avg_price_selection - GLOBAL_AVG_PRICE) / GLOBAL_AVG_PRICE) * 100
+                else:
+                    price_diff_pct = 0
 
-            insight = dbc.Card([
-                dbc.CardBody([
-                    html.Div([
-                        create_insight_icon("fa-solid fa-car-side", "primary"),
+                # Determine status text
+                if price_diff_pct > 0:
+                    price_status = "Premium"
+                    price_desc = "above market avg"
+                    price_color = "text-danger"
+                else:
+                    price_status = "Budget-Friendly"
+                    price_desc = "below market avg"
+                    price_color = "text-success"
+
+                insight = dbc.Card([
+                    dbc.CardBody([
                         html.Div([
-                            html.H5("Model Insight", className="card-title mb-0"),
-                            html.Small("Selection Analysis", className="text-muted")
-                        ])
-                    ], className="d-flex align-items-center mb-3"),
+                            create_insight_icon("fa-solid fa-magnifying-glass-chart", "primary"),
+                            html.Div([
+                                html.H5("Brand Analysis", className="card-title mb-0"),
+                                html.Small("Selection Details", className="text-muted")
+                            ])
+                        ], className="d-flex align-items-center mb-3"),
 
-                    html.P([
-                        "Top Model: ", html.Span(top_model, className="fw-bold text-primary"),
-                        html.Br(),
-                        html.Small(f"({model_share:.1f}% of selection)", className="text-muted")
-                    ], className="mb-2"),
+                        # Insight 1: Most Listed Model
+                        html.P([
+                            "Most Listed Model: ",
+                            html.Span(top_model, className="fw-bold text-primary"),
+                            html.Br(),
+                            html.Small(f"({top_model_count} listings, {model_share:.1f}% share)",
+                                       className="text-muted")
+                        ], className="mb-2"),
 
-                    html.P([
-                        "Price vs Market: ",
-                        html.Span(f"{abs(price_diff_pct):.1f}% {price_status}", className=f"fw-bold {price_color}")
-                    ], className="mb-0 small border-top pt-2")
-                ])
-            ], className="border-0 shadow-sm mb-3", style={"backgroundColor": "#f8f9fa"})
+                        # Insight 2: Price Positioning
+                        html.P([
+                            "Price Positioning: ",
+                            html.Span(f"{price_status}", className=f"fw-bold {price_color}"),
+                            html.Br(),
+                            html.Small(f"Avg. price is {abs(price_diff_pct):.1f}% {price_desc}.",
+                                       className="text-muted")
+                        ], className="mb-0 small border-top pt-2")
+                    ])
+                ], className="border-0 shadow-sm mb-3", style={"backgroundColor": "#f8f9fa"})
+
+            # 2. SCENARIO: Global Market View (No specific brand)
+            else:
+                if not data_filtered["make"].dropna().empty:
+                    top_brand = data_filtered["make"].value_counts().idxmax()
+                    top_brand_count = data_filtered["make"].value_counts().max()
+                    top_brand_share = (top_brand_count / len(data_filtered)) * 100
+                else:
+                    top_brand = "N/A"
+                    top_brand_count = 0
+                    top_brand_share = 0
+
+                if not data_filtered["fuel"].dropna().empty:
+                    top_fuel = data_filtered["fuel"].value_counts().idxmax()
+                    fuel_share = (data_filtered["fuel"].value_counts().max() / len(data_filtered)) * 100
+                else:
+                    top_fuel = "N/A"
+                    fuel_share = 0
+
+                insight = dbc.Card([
+                    dbc.CardBody([
+                        html.Div([
+                            create_insight_icon("fa-solid fa-chart-pie", "success"),
+                            html.Div([
+                                html.H5("Market Trends", className="card-title mb-0"),
+                                html.Small("Global Overview", className="text-muted")
+                            ])
+                        ], className="d-flex align-items-center mb-3"),
+
+                        # Insight 1: Dominant Brand
+                        html.P([
+                            "Most Listed Brand: ",
+                            html.Span(top_brand, className="fw-bold text-success"),
+                            html.Br(),
+                            html.Small(f"({top_brand_count} listings, {top_brand_share:.1f}% share)",
+                                       className="text-muted")
+                        ], className="mb-2"),
+
+                        # Insight 2: Fuel Trend
+                        html.P([
+                            "Dominant Fuel: ",
+                            html.Span(top_fuel, className="fw-bold text-dark"),
+                            html.Br(),
+                            html.Small(f"Powering {fuel_share:.1f}% of all vehicles.", className="text-muted")
+                        ], className="mb-0 small border-top pt-2")
+                    ])
+                ], className="border-0 shadow-sm mb-3", style={"backgroundColor": "#f8f9fa"})
 
         else:
-            top_brand = data_filtered["make"].value_counts().idxmax()
-            top_brand_share = (data_filtered["make"].value_counts().max() / len(data_filtered)) * 100
-            top_fuel = data_filtered["fuel"].value_counts().idxmax()
-
-            insight = dbc.Card([
-                dbc.CardBody([
-                    html.Div([
-                        create_insight_icon("fa-solid fa-chart-line", "success"),
-                        html.Div([
-                            html.H5("Market Insight", className="card-title mb-0"),
-                            html.Small("Global Trends", className="text-muted")
-                        ])
-                    ], className="d-flex align-items-center mb-3"),
-
-                    html.P([
-                        "Market Leader: ", html.Span(top_brand, className="fw-bold text-success"),
-                        html.Br(),
-                        html.Small(f"({top_brand_share:.1f}% share)", className="text-muted")
-                    ], className="mb-2"),
-
-                    html.P([
-                        "Dominant Fuel: ",
-                        html.Span(top_fuel, className="fw-bold text-dark")
-                    ], className="mb-0 small border-top pt-2")
-                ])
-            ], className="border-0 shadow-sm mb-3", style={"backgroundColor": "#f8f9fa"})
-
-    else:
-        insight = dbc.Alert("No data available", color="warning")
+            insight = dbc.Alert("No data available", color="warning")
+    except Exception as e:
+        # Fallback in case of calculation error (e.g. clean data issues)
+        insight = dbc.Alert(f"Insight temporarily unavailable.", color="light")
 
     return (
         kpi_count,

@@ -25,8 +25,8 @@ class DataLoader:
         # Cast year to integer
         self.data["year"] = self.data["year"].astype(int)
 
-        # 3. Handle outliers/invalid data (Optional refinement)
-        # E.g., remove cars with 0 HP or 0 Price if they exist, as they skew averages
+        # 3. Handle outliers/invalid data
+        # E.g., remove cars with 0 HP or suspicious low price
         self.data = self.data[self.data["price"] > 100]
         self.data = self.data[self.data["hp"] > 0]
 

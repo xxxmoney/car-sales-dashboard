@@ -1,7 +1,6 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-import numpy as np
 from src.constants import THEME_TEMPLATE, COLOR_PRIMARY, COLOR_SEQUENCE, COLOR_SECONDARY
 
 
@@ -86,10 +85,10 @@ def create_pie_chart_transmission(data: pd.DataFrame) -> go.Figure:
 
 
 def create_sunburst_chart(data: pd.DataFrame) -> go.Figure:
-    """
-    Sunburst Chart: Hierarchical view of the market
+    """ 
+    Sunburst Chart: Hierarchical view of the market 
     Brand -> Model -> Fuel
-    Logic update: Now groups smaller brands into "Other" so the percentages match global insights.
+    Logic: Groups smaller brands into "Other" to keep chart readable and cover 100% data.
     """
     if data.empty:
         return go.Figure()
@@ -102,11 +101,9 @@ def create_sunburst_chart(data: pd.DataFrame) -> go.Figure:
     top_brands = df_chart["make"].value_counts().nlargest(top_n).index
 
     # 2. Replace smaller brands with 'Other'
-    # This ensures the chart represents 100% of the data, matching the Insight text
     df_chart.loc[~df_chart["make"].isin(top_brands), "make"] = "Other"
 
-    # 3. For 'Other' brands, we might want to hide specific models to avoid clutter
-    # If make is 'Other', set model to 'Various'
+    # 3. For 'Other' brands, hide specific models to avoid clutter
     df_chart.loc[df_chart["make"] == "Other", "model"] = "Various"
 
     fig = px.sunburst(
