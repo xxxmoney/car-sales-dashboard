@@ -1,120 +1,136 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-from src.constants import THEME_TEMPLATE
+from src.constants import THEME_TEMPLATE, COLOR_PRIMARY, COLOR_SEQUENCE, COLOR_SECONDARY
+
+
+def _update_layout(fig: go.Figure):
+    """ Helper to apply common modern styling to all charts """
+    fig.update_layout(
+        template=THEME_TEMPLATE,
+        font=dict(family="Lato, sans-serif", size=12, color=COLOR_PRIMARY),
+        plot_bgcolor="rgba(0,0,0,0)",  # Transparent background
+        paper_bgcolor="rgba(0,0,0,0)",  # Transparent background
+        margin=dict(l=20, r=20, t=40, b=20),
+        title_font_size=16
+    )
+    return fig
+
 
 def create_line_chart_price_year(data: pd.DataFrame) -> go.Figure:
-    """ Creates Average Price Evolution over Time line chart """
+    """ Line chart: Price evolution """
     if data.empty:
         return go.Figure()
 
     data_trend = data.groupby("year")["price"].mean().reset_index()
 
-    line_chart = px.line(
+    fig = px.line(
         data_trend, x="year", y="price",
-        title="Average Price Evolution (Depreciation)",
-        markers=True,
-        template=THEME_TEMPLATE
+        title="Avg. Price Evolution",
+        markers=True
     )
 
-    # Tooltip
-    line_chart.update_traces(hovertemplate="Year: %{x}<br>Avg Price: %{y:,.0f} €<extra></extra>")
+    fig.update_traces(line_color=COLOR_PRIMARY, line_width=3, marker_size=8)
+    fig.update_xaxes(dtick=1, showgrid=False)
+    fig.update_yaxes(showgrid=True, gridcolor="#eee")
 
-    return line_chart
+    return _update_layout(fig)
 
 
 def create_scatter_chart_price_mileage(data: pd.DataFrame) -> go.Figure:
-    """ Creates Price vs. Mileage scatter plot """
+    """ Scatter: Price vs Mileage """
     if data.empty:
         return go.Figure()
 
-    # Make sure index is also a column - so we can access specific car in modal
     data_reset = data.reset_index()
 
-    scatter = px.scatter(
+    fig = px.scatter(
         data_reset, x="mileage", y="price", color="fuel",
-        title="Price vs. Mileage (Click for details)",
+        title="Price vs. Mileage Analysis",
         custom_data=["index", "make", "model", "year", "hp"],
         opacity=0.6,
-        template=THEME_TEMPLATE
+        color_discrete_sequence=COLOR_SEQUENCE
     )
 
-    # Tooltip
-    scatter.update_traces(
-        hovertemplate=(
-                "<b>%{customdata[1]} %{customdata[2]}</b><br>" +
-                "Price: %{y:,.0f} €<br>" +
-                "Mileage: %{x:,.0f} km<br>" +
-                "Year: %{customdata[3]}<br>" +
-                "Power: %{customdata[4]} HP"
-                "<extra></extra>"
-        )
-    )
-
-    scatter.update_layout(clickmode="event+select")
-    return scatter
+    fig.update_layout(clickmode="event+select", legend=dict(orientation="h", y=-0.2))
+    return _update_layout(fig)
 
 
 def create_box_plot_price_brand(data: pd.DataFrame) -> go.Figure:
-    """ Creates Price Distribution by Brand box plot """
+    """ Box Plot: Price Distribution """
     if data.empty:
         return go.Figure()
 
-    box_plot = px.box(
+    fig = px.box(
         data, x="make", y="price",
-        title="Price Distribution by Brand",
-        points="outliers",
-        template=THEME_TEMPLATE
+        title="Price Range by Brand",
+        color_discrete_sequence=[COLOR_PRIMARY]
     )
-    return box_plot
+    return _update_layout(fig)
 
 
 def create_pie_chart_transmission(data: pd.DataFrame) -> go.Figure:
-    """ Creates Transmission share pie chart """
+    """ Donut Chart: Transmission """
     if data.empty:
         return go.Figure()
 
-    pie_chart = px.pie(
+    fig = px.pie(
         data, names="gear",
-        title="Transmission Share",
-        hole=0.4,
-        template=THEME_TEMPLATE
+        title="Transmission Market Share",
+        hole=0.6,
+        color_discrete_sequence=COLOR_SEQUENCE
     )
-
-    # Text label
-    pie_chart.update_traces(textinfo="percent+label")
-
-    return pie_chart
+    fig.update_traces(textinfo="percent")
+    return _update_layout(fig)
 
 
-def create_histogram_price(data: pd.DataFrame) -> go.Figure:
-    """ Creates Price frequency distribution histogram """
+def create_sunburst_chart(data: pd.DataFrame) -> go.Figure:
+    """ 
+    Sunburst Chart: Hierarchical view of the market 
+    Brand -> Model -> Fuel
+    Logic: Groups smaller brands into "Other" to keep chart readable and cover 100% data.
+    """
     if data.empty:
         return go.Figure()
 
-    histogram = px.histogram(
-        data, x="price", nbins=50,
-        title="Price Distribution",
-        color_discrete_sequence=["#636EFA"],
-        template=THEME_TEMPLATE
+    # Work on a copy to avoid SettingWithCopyWarning
+    df_chart = data.copy()
+
+    # 1. Identify Top Brands (e.g., top 10)
+    top_n = 10
+    top_brands = df_chart["make"].value_counts().nlargest(top_n).index
+
+    # 2. Replace smaller brands with 'Other'
+    df_chart.loc[~df_chart["make"].isin(top_brands), "make"] = "Other"
+
+    # 3. For 'Other' brands, hide specific models to avoid clutter
+    df_chart.loc[df_chart["make"] == "Other", "model"] = "Various"
+
+    fig = px.sunburst(
+        df_chart,
+        path=["make", "model", "fuel"],
+        title="Market Hierarchy (Top 10 Brands vs Others)",
+        color_discrete_sequence=COLOR_SEQUENCE,
+        maxdepth=2
     )
-    return histogram
+
+    fig.update_traces(textinfo="label+percent entry")
+    return _update_layout(fig)
 
 
 def create_heatmap_price_mileage_hp_year(data: pd.DataFrame) -> go.Figure:
-    """ Creates Correlation Matrix heatmap """
+    """ Heatmap: Correlations """
     if data.empty:
         return go.Figure()
 
     numeric_columns = ["price", "mileage", "hp", "year"]
     data_correlation = data[numeric_columns].corr()
 
-    heatmap = px.imshow(
+    fig = px.imshow(
         data_correlation,
         text_auto=".2f",
         aspect="auto",
-        title="Correlation Matrix",
-        color_continuous_scale="RdBu_r",
-        template=THEME_TEMPLATE
+        title="Variable Correlation Matrix",
+        color_continuous_scale="RdBu_r"
     )
-    return heatmap
+    return _update_layout(fig)

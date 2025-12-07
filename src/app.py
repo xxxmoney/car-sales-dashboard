@@ -2,81 +2,185 @@ from dash import Dash, html, dcc, Input, Output, State, callback_context, no_upd
 import dash_bootstrap_components as dbc
 from src.data_loader import DataLoader
 import src.charts as charts
+from src import constants
+import math
 
-# Initialization
-external_stylesheets = [dbc.themes.FLATLY]
+# --- App Initialization ---
+external_stylesheets = [
+    dbc.themes.FLATLY,
+    "https://use.fontawesome.com/releases/v6.4.0/css/all.css"
+]
 app = Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
 
+# --- Data Loading ---
 loader = DataLoader()
 data = loader.load_data()
 brands = loader.get_brands()
 min_year, max_year = loader.get_year_range()
+GLOBAL_AVG_PRICE = data["price"].mean()
 
-# Main Layout
-app.layout = dbc.Container([
+# Calculate robust ranges for sliders (cutting off extreme outliers)
+# Using 98th percentile prevents 1-2 extreme cars from ruining the slider scale
+min_price = math.floor(data["price"].min())
+max_price = math.ceil(data["price"].quantile(0.98))
+min_mileage = math.floor(data["mileage"].min())
+max_mileage = math.ceil(data["mileage"].quantile(0.98))
 
-    # Header
-    dbc.Row([
-        dbc.Col([
-            html.H1("Used Car Market Analysis", className="text-center mt-4"),
-            html.P("Interactive dashboard for car sales data", className="text-center text-muted mb-5")
-        ], width=12)
-    ]),
 
-    # Modal Car Details
-    dbc.Modal([
-        dbc.ModalHeader(dbc.ModalTitle("Car Details")),
-        dbc.ModalBody(id="modal-body"),
-        dbc.ModalFooter(
-            dbc.Button("Close", id="close-modal", className="ms-auto", n_clicks=0)
-        ),
-    ], id="car-modal", is_open=False, size="lg"),
+# --- Helper Functions ---
 
-    # Main Grid
-    dbc.Row([
-        # Filters
-        dbc.Col([
-            dbc.Card([
-                dbc.CardBody([
-                    html.H4("Filters", className="card-title mb-4"),
+def format_number(value):
+    """ Formats large numbers to human-readable string (e.g. 1.2k, 1.5M) """
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}M"
+    elif value >= 1_000:
+        return f"{value / 1_000:.1f}k"
+    else:
+        return f"{value:.0f}"
 
-                    # 1. Brand Filter
-                    html.Div([
-                        html.Label("Car Brand:", className="fw-bold mb-1"),
+
+def create_kpi_card(title, icon_class, id_value, color_hex, tooltip_text):
+    return dbc.Card(
+        dbc.CardBody([
+            html.Div([
+                html.I(className=f"{icon_class} fa-2x mb-3", style={"color": color_hex}),
+            ], className="text-center position-relative"),
+
+            html.I(
+                className="fa-regular fa-circle-question text-muted position-absolute top-0 end-0 m-2",
+                id=f"tooltip-{id_value}",
+                style={"cursor": "pointer", "fontSize": "0.9rem"}
+            ),
+            dbc.Tooltip(tooltip_text, target=f"tooltip-{id_value}", placement="top"),
+
+            html.H6(title, className="text-muted text-center text-uppercase", style={"fontSize": "0.8rem"}),
+            html.H3(id=id_value, className="card-text text-center fw-bold", style={"color": color_hex}),
+        ]),
+        className="shadow-sm border-0 h-100 mb-4 hover-shadow position-relative"
+    )
+
+
+def create_insight_icon(icon_class, bg_color_hex):
+    return html.Div(
+        html.I(className=f"{icon_class} text-white", style={"fontSize": "1.2rem"}),
+        className=f"rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm",
+        style={"minWidth": "45px", "height": "45px", "backgroundColor": bg_color_hex}
+    )
+
+
+# --- Main Layout ---
+app.layout = html.Div([
+
+    # 1. Navigation Bar
+    dbc.NavbarSimple(
+        brand="AutoScout24 Analytics",
+        brand_href="#",
+        color="primary",
+        dark=True,
+        className="mb-4 shadow-sm"
+    ),
+
+    dbc.Container([
+
+        # 2. Header
+        dbc.Row([
+            dbc.Col([
+                html.H2("Market Overview", className="fw-light"),
+                html.P("Real-time analysis of used car sales data.", className="text-muted")
+            ], width=8),
+            dbc.Col([
+                html.Div(className="text-end text-muted", children=[
+                    html.I(className="fa-regular fa-clock me-2"),
+                    "Data Status: Up to date"
+                ])
+            ], width=4, className="d-flex align-items-center justify-content-end")
+        ], className="mb-4 align-items-center"),
+
+        # 3. Main Grid
+        dbc.Row([
+
+            # --- LEFT PANEL: FILTERS ---
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("Filter Data", className="bg-white fw-bold"),
+                    dbc.CardBody([
+                        # Smart Insight Container
+                        html.Div(id="smart-insight", className="mb-4"),
+
+                        # Brand
+                        html.Label([html.I(className="fa-solid fa-car me-2"), "Brand"], className="fw-bold mt-2"),
                         dcc.Dropdown(
                             id="filter-brand",
                             options=[{"label": b, "value": b} for b in brands],
                             multi=True,
-                            placeholder="Select brands..."
-                        )
-                    ], className="mb-3"),
+                            placeholder="Select brand...",
+                            className="mb-2"
+                        ),
 
-                    # Year Filter
-                    html.Div([
-                        html.Label("Production Year:", className="fw-bold mb-1"),
+                        # Model (Cascading Filter)
+                        html.Label([html.I(className="fa-solid fa-car-side me-2"), "Model"], className="fw-bold mt-2"),
+                        dcc.Dropdown(
+                            id="filter-model",
+                            options=[],  # Populated by callback
+                            multi=True,
+                            placeholder="Select model...",
+                            disabled=True,  # Enabled only after brand selection
+                            className="mb-3"
+                        ),
+
+                        # Price Range (Fixed: Only Min/Max Marks)
+                        html.Label([html.I(className="fa-solid fa-euro-sign me-2"), "Price Range"],
+                                   className="fw-bold"),
+                        dcc.RangeSlider(
+                            id="filter-price",
+                            min=min_price, max=max_price, step=1000,
+                            value=[min_price, max_price],
+                            marks={
+                                min_price: f"{min_price / 1000:.0f}k",
+                                max_price: f"{max_price / 1000:.0f}k+"
+                            },
+                            tooltip={"placement": "bottom", "always_visible": False},
+                            className="mb-3"
+                        ),
+
+                        # Mileage Range (Fixed: Only Min/Max Marks)
+                        html.Label([html.I(className="fa-solid fa-road me-2"), "Mileage Range"], className="fw-bold"),
+                        dcc.RangeSlider(
+                            id="filter-mileage",
+                            min=min_mileage, max=max_mileage, step=5000,
+                            value=[min_mileage, max_mileage],
+                            marks={
+                                min_mileage: f"{min_mileage / 1000:.0f}k",
+                                max_mileage: f"{max_mileage / 1000:.0f}k+"
+                            },
+                            tooltip={"placement": "bottom", "always_visible": False},
+                            className="mb-3"
+                        ),
+
+                        # Year
+                        html.Label([html.I(className="fa-regular fa-calendar me-2"), "Year Range"],
+                                   className="fw-bold"),
                         dcc.RangeSlider(
                             id="filter-year",
                             min=min_year, max=max_year, step=1,
-                            marks={i: str(i) for i in range(min_year, max_year + 1, 2)},
-                            value=[min_year, max_year]
-                        )
-                    ], className="mb-3"),
+                            marks={i: str(i) for i in range(min_year, max_year + 1, 3)},
+                            value=[min_year, max_year],
+                            className="mb-4"
+                        ),
 
-                    # Fuel Filter
-                    html.Div([
-                        html.Label("Fuel Type:", className="fw-bold mb-1"),
+                        # Fuel
+                        html.Label([html.I(className="fa-solid fa-gas-pump me-2"), "Fuel Type"], className="fw-bold"),
                         dcc.Dropdown(
                             id="filter-fuel",
                             options=[{"label": f, "value": f} for f in data["fuel"].unique()],
                             multi=True,
-                            placeholder="All fuels"
-                        )
-                    ], className="mb-4"),
+                            placeholder="All fuels",
+                            className="mb-3"
+                        ),
 
-                    # Transmission Filter
-                    html.Div([
-                        html.Label("Transmission:", className="fw-bold mb-2"),
+                        # Transmission
+                        html.Label([html.I(className="fa-solid fa-gears me-2"), "Transmission"], className="fw-bold"),
                         dcc.Checklist(
                             id="filter-transmission",
                             options=[{"label": g, "value": g} for g in data["gear"].unique()],
@@ -86,174 +190,327 @@ app.layout = dbc.Container([
                             labelClassName="me-3"
                         )
                     ])
+                ], className="border-0 shadow-sm")
+            ], xs=12, lg=3, className="mb-4"),
+
+            # --- RIGHT PANEL: VISUALIZATIONS ---
+            dbc.Col([
+                dcc.Loading(id="loading", type="cube", color=constants.COLOR_PRIMARY, children=[
+
+                    # KPIs
+                    dbc.Row([
+                        dbc.Col(
+                            create_kpi_card("Total Vehicles", "fa-solid fa-list", "kpi-count", constants.COLOR_PRIMARY,
+                                            "Total number of cars matching current filters."), width=4),
+                        dbc.Col(
+                            create_kpi_card("Avg. Price", "fa-solid fa-euro-sign", "kpi-price", constants.COLOR_ACCENT,
+                                            "Average listing price for the selected cars."), width=4),
+                        dbc.Col(create_kpi_card("Avg. Mileage", "fa-solid fa-road", "kpi-mileage", constants.COLOR_INFO,
+                                                "Average mileage (km) for the selected cars."), width=4),
+                    ]),
+
+                    # TABS Section
+                    dbc.Tabs([
+
+                        # TAB 1: General Overview
+                        dbc.Tab(label="Market Overview", tab_id="tab-overview", children=[
+                            html.Br(),
+                            dbc.Row([
+                                dbc.Col(
+                                    dbc.Card(dcc.Graph(id="graph-sunburst"), className="shadow-sm border-0 mb-4 p-2"),
+                                    width=12),
+                            ]),
+                            dbc.Row([
+                                dbc.Col(dbc.Card(dcc.Graph(id="graph-line-price-year"),
+                                                 className="shadow-sm border-0 mb-4 p-2"), lg=8),
+                                dbc.Col(dbc.Card(dcc.Graph(id="graph-pie-transmission"),
+                                                 className="shadow-sm border-0 mb-4 p-2"), lg=4),
+                            ])
+                        ]),
+
+                        # TAB 2: Detailed Analysis
+                        dbc.Tab(label="Price & Performance Analysis", tab_id="tab-analysis", children=[
+                            html.Br(),
+                            dbc.Row([
+                                dbc.Col(dbc.Card(dcc.Graph(id="graph-scatter-price-mileage"),
+                                                 className="shadow-sm border-0 mb-4 p-2"), width=12),
+                            ]),
+                            dbc.Row([
+                                dbc.Col(dbc.Card(dcc.Graph(id="graph-box-price-brand"),
+                                                 className="shadow-sm border-0 mb-4 p-2"), width=12),
+                            ])
+                        ]),
+
+                        # TAB 3: Correlations
+                        dbc.Tab(label="Correlations", tab_id="tab-stats", children=[
+                            html.Br(),
+                            dbc.Row([
+                                dbc.Col(dbc.Card(dcc.Graph(id="graph-heatmap-price-mileage-hp-year"),
+                                                 className="shadow-sm border-0 mb-4 p-2"), width=12),
+                            ])
+                        ]),
+
+                    ], id="tabs", active_tab="tab-overview", className="mb-3")
+
                 ])
-            ], className="bg-light border-0 shadow-sm h-100")
-        ], xs=12, lg=3, className="mb-4 mb-lg-0"),
+            ], xs=12, lg=9)
+        ]),
 
-        # Content
-        dbc.Col([
-            dcc.Loading(
-                id="loading-data",
-                type="default",
-                children=[
-                    # KPI Cards
-                    dbc.Row([
-                        dbc.Col(dbc.Card(dbc.CardBody([
-                            html.H6("Total Cars", className="card-title text-muted"),
-                            html.H3(id="kpi-count", className="card-text")
-                        ]), className="text-center shadow-sm border-0 h-100"), xs=12, md=4, className="mb-4"),
+        # Footer
+        dbc.Row([
+            dbc.Col(html.P("© 2025 Car Sales Analytics Project", className="text-center text-muted small mt-4"),
+                    width=12)
+        ])
 
-                        dbc.Col(dbc.Card(dbc.CardBody([
-                            html.H6("Avg Price", className="card-title text-muted"),
-                            html.H3(id="kpi-price", className="card-text")
-                        ]), className="text-center shadow-sm border-0 h-100"), xs=12, md=4, className="mb-4"),
+    ], fluid=True),
 
-                        dbc.Col(dbc.Card(dbc.CardBody([
-                            html.H6("Avg Mileage", className="card-title text-muted"),
-                            html.H3(id="kpi-mileage", className="card-text")
-                        ]), className="text-center shadow-sm border-0 h-100"), xs=12, md=4, className="mb-4"),
-                    ]),
+    # Modal
+    dbc.Modal([
+        dbc.ModalHeader(dbc.ModalTitle("Vehicle Detail"), close_button=True),
+        dbc.ModalBody(id="modal-body"),
+        dbc.ModalFooter(
+            dbc.Button("Close", id="close-modal", className="ms-auto", n_clicks=0)
+        ),
+    ], id="car-modal", is_open=False, size="lg", centered=True),
 
-                    dbc.Row([
-                        dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id="graph-line-price-year")
-                        ]), className="shadow-sm border-0 h-100"), xs=12, lg=6, className="mb-4"),
-
-                        dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id="graph-scatter-price-mileage")
-                        ]), className="shadow-sm border-0 h-100"), xs=12, lg=6, className="mb-4"),
-                    ]),
-
-                    dbc.Row([
-                        dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id="graph-box-price-brand")
-                        ]), className="shadow-sm border-0 h-100"), xs=12, lg=8, className="mb-4"),
-
-                        dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id="graph-pie-transmission")
-                        ]), className="shadow-sm border-0 h-100"), xs=12, lg=4, className="mb-4"),
-                    ]),
-
-                    dbc.Row([
-                        dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id="graph-histogram-price")
-                        ]), className="shadow-sm border-0 h-100"), xs=12, lg=6, className="mb-4"),
-
-                        dbc.Col(dbc.Card(dbc.CardBody([
-                            dcc.Graph(id="graph-heatmap-price-mileage-hp-year")
-                        ]), className="shadow-sm border-0 h-100"), xs=12, lg=6, className="mb-4"),
-                    ]),
-                ]
-            )
-        ], xs=12, lg=9)
-
-    ], className="mb-5")
-], fluid=True)
+], style={"backgroundColor": "#f8f9fa", "minHeight": "100vh"})
 
 
-# Methods for handling updates/interaction below - important - order of arguments matters!
+# --- Callbacks ---
 
-# Specify output for each KPI/Graph
+# 1. Callback for Cascading Model Dropdown
 @app.callback(
-    # KPI and Graphs
+    [
+        Output("filter-model", "options"),
+        Output("filter-model", "disabled"),
+        Output("filter-model", "value")  # Added output to clear value
+    ],
+    Input("filter-brand", "value")
+)
+def update_model_options(selected_brands):
+    """ Updates model dropdown based on selected brands and resets selection """
+    if not selected_brands:
+        return [], True, []  # Reset options, disable, clear value
+
+    # Filter data for selected brands and get unique models
+    relevant_models = data[data["make"].isin(selected_brands)]["model"].dropna().unique()
+    sorted_models = sorted(relevant_models)
+
+    options = [{"label": m, "value": m} for m in sorted_models]
+    # Return new options, enable dropdown, and CLEAR previous value (return [])
+    return options, False, []
+
+
+# 2. Main Dashboard Callback
+@app.callback(
     [
         Output("kpi-count", "children"),
         Output("kpi-price", "children"),
         Output("kpi-mileage", "children"),
+        Output("smart-insight", "children"),
+        Output("graph-sunburst", "figure"),
         Output("graph-line-price-year", "figure"),
         Output("graph-scatter-price-mileage", "figure"),
         Output("graph-box-price-brand", "figure"),
         Output("graph-pie-transmission", "figure"),
-        Output("graph-histogram-price", "figure"),
         Output("graph-heatmap-price-mileage-hp-year", "figure")
     ],
-
-    # Filters
     [
         Input("filter-brand", "value"),
+        Input("filter-model", "value"),
         Input("filter-year", "value"),
+        Input("filter-price", "value"),
+        Input("filter-mileage", "value"),
         Input("filter-fuel", "value"),
         Input("filter-transmission", "value")
     ]
 )
-def update_dashboard(selected_brands, year_range, selected_fuels, selected_gears):
-    """ handles dashboard update with filtered data """
+def update_dashboard(selected_brands, selected_models, year_range, price_range, mileage_range, selected_fuels,
+                     selected_gears):
     data_filtered = data.copy()
 
-    # Apply filters - year, make, fuel and gear
-    data_filtered = data_filtered[(data_filtered["year"] >= year_range[0]) & (data_filtered["year"] <= year_range[1])]
+    # Apply Filters
+    # Year
+    data_filtered = data_filtered[
+        (data_filtered["year"] >= year_range[0]) &
+        (data_filtered["year"] <= year_range[1])
+        ]
+    # Price (Robust filtering: allow values slightly above slider max to capture edge cases)
+    # If the user selects the absolute max on slider, include everything above it too (the 2% outliers)
+    if price_range[1] >= max_price:
+        data_filtered = data_filtered[data_filtered["price"] >= price_range[0]]
+    else:
+        data_filtered = data_filtered[
+            (data_filtered["price"] >= price_range[0]) &
+            (data_filtered["price"] <= price_range[1])
+            ]
+
+    # Mileage (Same logic for outliers)
+    if mileage_range[1] >= max_mileage:
+        data_filtered = data_filtered[data_filtered["mileage"] >= mileage_range[0]]
+    else:
+        data_filtered = data_filtered[
+            (data_filtered["mileage"] >= mileage_range[0]) &
+            (data_filtered["mileage"] <= mileage_range[1])
+            ]
+
     if selected_brands:
         data_filtered = data_filtered[data_filtered["make"].isin(selected_brands)]
+
+    if selected_models:
+        data_filtered = data_filtered[data_filtered["model"].isin(selected_models)]
+
     if selected_fuels:
         data_filtered = data_filtered[data_filtered["fuel"].isin(selected_fuels)]
     if selected_gears:
         data_filtered = data_filtered[data_filtered["gear"].isin(selected_gears)]
 
     if data_filtered.empty:
-        return "0", "0 €", "0 km", {}, {}, {}, {}, {}, {}
+        return "0", "0", "0", "No data available", {}, {}, {}, {}, {}, {}
 
-    kpi_count = f"{len(data_filtered)}"
-    kpi_price = f"{data_filtered["price"].mean():,.0f} €"
-    kpi_mileage = f"{data_filtered["mileage"].mean():,.0f} km"
+    # KPIs
+    kpi_count = f"{format_number(len(data_filtered))}"
+    kpi_price = f"{format_number(data_filtered['price'].mean())} €"
+    kpi_mileage = f"{format_number(data_filtered['mileage'].mean())} km"
+
+    # --- Smart Insight Logic ---
+    # NO try-except here - errors will be exposed in console/debug if any
+    if not data_filtered.empty:
+        avg_price_selection = data_filtered["price"].mean()
+        if GLOBAL_AVG_PRICE > 0:
+            price_diff_pct = ((avg_price_selection - GLOBAL_AVG_PRICE) / GLOBAL_AVG_PRICE) * 100
+        else:
+            price_diff_pct = 0
+
+        price_status = "Premium" if price_diff_pct > 0 else "Budget-Friendly"
+        price_desc = "above market avg" if price_diff_pct > 0 else "below market avg"
+        price_color = constants.COLOR_DANGER if price_diff_pct > 0 else constants.COLOR_ACCENT
+
+        # Case 1: Single Brand Selected
+        if selected_brands and len(selected_brands) == 1:
+            # If models are selected, show specific model info
+            if selected_models and len(selected_models) == 1:
+                target_name = selected_models[0]
+                target_type = "Specific Model"
+                count = len(data_filtered)
+                share = 100
+            elif not data_filtered["model"].dropna().empty:
+                target_name = data_filtered["model"].value_counts().idxmax()
+                count = data_filtered["model"].value_counts().max()
+                share = (count / len(data_filtered)) * 100
+                target_type = "Most Listed Model"
+            else:
+                target_name = "N/A"
+                count, share = 0, 0
+                target_type = "Model"
+
+            insight_content = [
+                html.P([
+                    f"{target_type}: ",
+                    html.Span(target_name, className="fw-bold", style={"color": constants.COLOR_PRIMARY}),
+                    html.Br(),
+                    html.Small(f"({count} listings, {share:.1f}% share)", className="text-muted")
+                ], className="mb-2"),
+                html.P([
+                    "Price Positioning: ",
+                    html.Span(f"{price_status}", className="fw-bold", style={"color": price_color}),
+                    html.Br(),
+                    html.Small(f"Avg. price is {abs(price_diff_pct):.1f}% {price_desc}.", className="text-muted")
+                ], className="mb-0 small border-top pt-2")
+            ]
+            icon = "fa-solid fa-car-side"
+            icon_color = constants.COLOR_PRIMARY
+
+        # Case 2: Multiple Brands or Global
+        else:
+            if not data_filtered["make"].dropna().empty:
+                top_brand = data_filtered["make"].value_counts().idxmax()
+                top_count = data_filtered["make"].value_counts().max()
+                share = (top_count / len(data_filtered)) * 100
+            else:
+                top_brand, top_count, share = "N/A", 0, 0
+
+            title_text = "Multi-Brand Analysis" if selected_brands else "Global Market Trends"
+
+            insight_content = [
+                html.P([
+                    "Dominant Brand: ",
+                    html.Span(top_brand, className="fw-bold", style={"color": constants.COLOR_ACCENT}),
+                    html.Br(),
+                    html.Small(f"({top_count} listings, {share:.1f}% of selection)", className="text-muted")
+                ], className="mb-2"),
+                html.P([
+                    "Price Trend: ",
+                    html.Span(f"{price_status}", className="fw-bold", style={"color": price_color}),
+                    html.Br(),
+                    html.Small(f"Selection is {abs(price_diff_pct):.1f}% {price_desc}.", className="text-muted")
+                ], className="mb-0 small border-top pt-2")
+            ]
+            icon = "fa-solid fa-chart-pie"
+            icon_color = constants.COLOR_ACCENT
+
+        insight = dbc.Card([
+            dbc.CardBody([
+                html.Div([
+                    create_insight_icon(icon, icon_color),
+                    html.Div([
+                        html.H5("Analytic Insight", className="card-title mb-0"),
+                        html.Small("Key Findings", className="text-muted")
+                    ])
+                ], className="d-flex align-items-center mb-3"),
+                html.Div(insight_content)
+            ])
+        ], className="border-0 shadow-sm mb-3", style={"backgroundColor": "#f8f9fa"})
+
+    else:
+        insight = dbc.Alert("No data available", color="warning")
 
     return (
         kpi_count,
         kpi_price,
         kpi_mileage,
+        insight,
+        charts.create_sunburst_chart(data_filtered),
         charts.create_line_chart_price_year(data_filtered),
         charts.create_scatter_chart_price_mileage(data_filtered),
         charts.create_box_plot_price_brand(data_filtered),
         charts.create_pie_chart_transmission(data_filtered),
-        charts.create_histogram_price(data_filtered),
         charts.create_heatmap_price_mileage_hp_year(data_filtered)
     )
 
 
-# Specify handling of scatter plot click (open modal) and modal closing
 @app.callback(
-    [
-        Output("car-modal", "is_open"),
-        Output("modal-body", "children")
-    ],
-    [
-        Input("graph-scatter-price-mileage", "clickData"),
-        Input("close-modal", "n_clicks")
-    ],
-    [
-        State("car-modal", "is_open")
-    ]
+    [Output("car-modal", "is_open"), Output("modal-body", "children")],
+    [Input("graph-scatter-price-mileage", "clickData"), Input("close-modal", "n_clicks")],
+    [State("car-modal", "is_open")]
 )
 def toggle_modal(click_data, n_clicks, is_open):
-    """ Handles modal of specific car (click from scatter price-mileage plot, closing modal) """
     ctx = callback_context
     if not ctx.triggered:
         return no_update, no_update
     trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
     if trigger_id == "graph-scatter-price-mileage" and click_data:
-        # Try to fill the modal table with specific car data
         try:
             car_id = click_data["points"][0]["customdata"][0]
             car_row = data.loc[car_id]
             details = dbc.Table([html.Tbody([
-                html.Tr([html.Td(k), html.Td(v, className="fw-bold" if k in ["make", "price"] else "")])
+                html.Tr([html.Td(k, className="text-muted"), html.Td(v, className="fw-bold")])
                 for k, v in row_data(car_row).items()
-            ])], striped=True, bordered=True)
+            ])], borderless=True, size="sm")
             return True, details
         except:
             return True, "Error loading details"
     elif trigger_id == "close-modal":
         return False, no_update
-
     return is_open, no_update
 
-# Handles format for specific car modal
+
 def row_data(row):
     return {
         "Make": row["make"], "Model": row["model"],
-        "Price": f"{row["price"]:,.0f} €",
-        "Mileage": f"{row["mileage"]:,.0f} km",
-        "Year": row["year"], "Power": f"{row["hp"]} HP",
-        "Fuel": row["fuel"], "Gear": row["gear"],
-        "Offer Type": row["offerType"]
+        "Price": f"{row['price']:,.0f} €",
+        "Mileage": f"{row['mileage']:,.0f} km",
+        "Year": row["year"], "Power": f"{row['hp']} HP",
+        "Fuel": row["fuel"], "Transmission": row["gear"]
     }
