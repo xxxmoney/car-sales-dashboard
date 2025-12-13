@@ -3,7 +3,7 @@ import dash_bootstrap_components as dbc
 import src.charts as charts
 from src import constants
 from src.data_loader import DataLoader
-from src.helpers import format_number, create_insight_icon, row_data
+from src.helpers import format_number, create_insight_icon
 
 
 def setup(app: Dash, loader: DataLoader):
@@ -231,7 +231,7 @@ def setup(app: Dash, loader: DataLoader):
                 car_row = data.loc[car_id]
                 details = dbc.Table([html.Tbody([
                     html.Tr([html.Td(k, className="text-muted"), html.Td(v, className="fw-bold")])
-                    for k, v in row_data(car_row).items()
+                    for k, v in _row_data(car_row).items()
                 ])], borderless=True, size="sm")
                 return True, details
             except:
@@ -240,3 +240,11 @@ def setup(app: Dash, loader: DataLoader):
             return False, no_update
         return is_open, no_update
 
+    def _row_data(row):
+        return {
+            "Make": row["make"], "Model": row["model"],
+            "Price": f"{row['price']:,.0f} €",
+            "Mileage": f"{row['mileage']:,.0f} km",
+            "Year": row["year"], "Power": f"{row['hp']} HP",
+            "Fuel": row["fuel"], "Transmission": row["gear"]
+        }

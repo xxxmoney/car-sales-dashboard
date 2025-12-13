@@ -5,6 +5,7 @@ from src import constants
 from src.helpers import create_kpi_card
 import src.callbacks as callbacks
 
+
 # Initialize app
 app = Dash(
     __name__,

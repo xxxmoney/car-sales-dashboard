@@ -175,7 +175,7 @@ Contains logic connecting UI and data (application reactivity)
 
 ### Module: `helpers`
 
-Helper functions for formatting and UI components.
+Helper functions for formatting and UI components
 
 #### Function `format_number`
 
@@ -195,7 +195,7 @@ Helper functions for formatting and UI components.
 
 ### 4.1 Testing
 
-Testing combined static code analysis and manual User Acceptance Testing (UAT).
+Testing combined static code analysis and manual User Acceptance Testing (UAT)
 
 1. **Data Loading Validation:**  
    * Verified DataLoader correctly drops missing values  
