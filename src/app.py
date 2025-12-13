@@ -220,10 +220,7 @@ app.layout = html.Div([
     # Modal
     dbc.Modal([
         dbc.ModalHeader(dbc.ModalTitle("Vehicle Detail"), close_button=True),
-        dbc.ModalBody(id="modal-body"),
-        dbc.ModalFooter(
-            dbc.Button("Close", id="close-modal", className="ms-auto", n_clicks=0)
-        ),
+        dbc.ModalBody(id="modal-body")
     ], id="car-modal", is_open=False, size="lg", centered=True),
 
 ], style={"backgroundColor": "#f8f9fa", "minHeight": "100vh"})
