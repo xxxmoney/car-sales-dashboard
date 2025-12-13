@@ -4,7 +4,7 @@ DATA_SET_PATH: str = "data/autoscout24-germany-dataset.csv"
 # Chart theme
 THEME_TEMPLATE: str = "plotly_white"
 
-# --- Color Palette ---
+# Palette
 COLOR_PRIMARY: str = "#2C3E50"      # Dark Blue (Base/Text)
 COLOR_SECONDARY: str = "#E67E22"    # Carrot Orange (Highlights/Buttons)
 COLOR_ACCENT: str = "#18BC9C"       # Teal (Positive indicators)

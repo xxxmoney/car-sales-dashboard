@@ -66,29 +66,27 @@
    - Knihovna **Plotly** pro vizualizaci
 
 **Struktura projektu:**
-   - main.py: Vstupní bod aplikace.  
-   - src/app.py: Definice layoutu, UI komponent a callbacků (interaktivní logika).  
-   - src/charts.py: Funkce pro generování jednotlivých grafů (zapouzdření vizuální logiky).  
-   - src/data\_loader.py: Třída pro načítání, čištění a přípravu dat (ETL proces).  
-   - src/constants.py: Konfigurace barev, cest a stylů.
+   - main.py: Vstupní bod aplikace
+   - src/app.py: Definice layoutu, UI komponent
+   - src/callbacks.py - Propojení s layout pro akutalizaci dat, atd
+   - src/charts.py: Generování jednotlivých grafů 
+   - src/data\_loader.py: Načítání, čištění a příprava dat
+   - src/constants.py: Konfigurace
 
 ### **3.2 Popis klíčových funkcí**
 #### **Třída DataLoader (src/data\_loader.py)**
- - load\_data(): Načte CSV soubor, odstraní řádky s chybějícími kritickými hodnotami (HP, Gear, Model) a převede datové typy
- - get\_brands(): Vrací seznam unikátních značek pro filtry
+ - load\_data(): Načte datový set a provede základní očištění
 
-#### **Modul charts (src/charts.py)**
- - create\_sunburst\_chart(data): Agreguje data a vytváří hierarchický graf - automaticky seskupuje malé značky do kategorie "Other" pro zachování čitelnosti  
- - \_update\_layout(fig): Privátní pomocná funkce, která aplikuje jednotný grafický styl (fonty, průhledné pozadí) na všechny grafy
+#### **Aplikace (src/app.py)**
+ - update\_dashboard(...): Přijímá hodnoty z filtrů, filtruje dataset  a volá funkce pro překreslení grafů a výpočet KPI
 
-#### **Aplikace app (src/app.py)**
- - update\_dashboard(...): Hlavní callback funkce. Přijímá hodnoty z filtrů, filtruje dataset pomocí Pandas a volá funkce pro překreslení všech grafů a výpočet KPI.  
- - update\_model\_options(...): "Chained callback", který dynamicky aktualizuje nabídku modelů podle vybrané značky.
+#### **Callbacks (src/callbacks.py)**
+ - setup(...): Nastaví "komunikaci" s layout pro aktualizaci dat, filtrování, překresolvání grafů, atd
 
 ### **3.3 Použité knihovny**
- - **Dash & Dash Bootstrap Components:** Pro tvorbu webového rozhraní a responzivního layoutu.  
- - **Plotly:** Pro interaktivní grafy.  
- - **Pandas:** Pro manipulaci s daty a filtraci.
+ - **Dash & Dash Bootstrap Components:** Pro tvorbu webového rozhraní a responzivního layoutu
+ - **Plotly:** Pro interaktivní grafy
+ - **Pandas:** Pro manipulaci s daty a filtraci
 
 ### **3.4 Instalace a spuštění**
  - **Prerekvizity:**    
@@ -100,9 +98,8 @@
    - Nainstalování balíčků: `poetry install`
  - **Spuštění:**  
    - `python main.py`
-
-4. Aplikace se spustí na adrese http://127.0.0.1:8050
+   - Aplikace se spustí na adrese http://localhost:8050
 
 ## **4\. Řešení nenadálých situací**
- - **Chybějící data:** Třída DataLoader automaticky filtruje nekompletní záznamy při startu. Pokud filtr vrátí prázdnou sadu dat, dashboard zobrazí informaci "No data available" a grafy se skryjí, aby aplikace nespadla  
- - **Extrémní hodnoty:** Rozsah sliderů pro cenu a nájezd je dynamicky vypočítán na základě 98\. percentilu, aby extrémní odlehlé hodnoty (outliers) nedeformovaly ovládací prvky
+ - **Chybějící data:** Třída DataLoader automaticky filtruje nekompletní záznamy při startu  
+ - **Extrémní hodnoty:** Rozsah sliderů pro cenu a nájezd je dynamicky vypočítán (odfiltrovování extrémních hodnot atd - kvůli lepšímu aplikování filtrů)
