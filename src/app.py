@@ -7,11 +7,13 @@ import math
 from src.helpers import create_kpi_card, format_number, create_insight_icon
 
 # --- App Initialization ---
-external_stylesheets = [
-    dbc.themes.FLATLY,
-    constants.FONT_AWESOME_CDN,
-]
-app = Dash(__name__, external_stylesheets=external_stylesheets)
+app = Dash(
+    __name__,
+    external_stylesheets=[
+        dbc.themes.FLATLY,
+        constants.FONT_AWESOME_CDN,
+    ]
+)
 server = app.server
 
 # --- Data Loading ---
