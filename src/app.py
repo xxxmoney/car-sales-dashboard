@@ -18,15 +18,7 @@ server = app.server
 loader = DataLoader()
 data = loader.load_data()
 brands = loader.get_brands()
-min_year, max_year = loader.get_year_range()
-global_average_price = data["price"].mean()
-
-# Calculate robust ranges for sliders
-min_price = math.floor(data["price"].min())
-max_price = math.ceil(data["price"].quantile(0.98))
-min_mileage = math.floor(data["mileage"].min())
-max_mileage = math.ceil(data["mileage"].quantile(0.98))
-
+metadata = loader.get_metadata()
 
 # --- Main Layout ---
 app.layout = html.Div([
@@ -93,11 +85,11 @@ app.layout = html.Div([
                                    className="fw-bold"),
                         dcc.RangeSlider(
                             id="filter-price",
-                            min=min_price, max=max_price, step=1000,
-                            value=[min_price, max_price],
+                            min=metadata.min_price, max=metadata.max_price, step=1000,
+                            value=[metadata.min_price, metadata.max_price],
                             marks={
-                                min_price: f"{min_price / 1000:.0f}k",
-                                max_price: f"{max_price / 1000:.0f}k+"
+                                metadata.min_price: f"{metadata.min_price / 1000:.0f}k",
+                                metadata.max_price: f"{metadata.max_price / 1000:.0f}k+"
                             },
                             tooltip={"placement": "bottom", "always_visible": False},
                             className="mb-3"
@@ -107,11 +99,11 @@ app.layout = html.Div([
                         html.Label([html.I(className="fa-solid fa-road me-2"), "Mileage Range"], className="fw-bold"),
                         dcc.RangeSlider(
                             id="filter-mileage",
-                            min=min_mileage, max=max_mileage, step=5000,
-                            value=[min_mileage, max_mileage],
+                            min=metadata.min_mileage, max=metadata.max_mileage, step=5000,
+                            value=[metadata.min_mileage, metadata.max_mileage],
                             marks={
-                                min_mileage: f"{min_mileage / 1000:.0f}k",
-                                max_mileage: f"{max_mileage / 1000:.0f}k+"
+                                metadata.min_mileage: f"{metadata.min_mileage / 1000:.0f}k",
+                                metadata.max_mileage: f"{metadata.max_mileage / 1000:.0f}k+"
                             },
                             tooltip={"placement": "bottom", "always_visible": False},
                             className="mb-3"
@@ -122,9 +114,9 @@ app.layout = html.Div([
                                    className="fw-bold"),
                         dcc.RangeSlider(
                             id="filter-year",
-                            min=min_year, max=max_year, step=1,
-                            marks={i: str(i) for i in range(min_year, max_year + 1, 3)},
-                            value=[min_year, max_year],
+                            min=metadata.min_year, max=metadata.max_year, step=1,
+                            marks={i: str(i) for i in range(metadata.min_year, metadata.max_year + 1, 3)},
+                            value=[metadata.min_year, metadata.max_year],
                             className="mb-4"
                         ),
 
@@ -296,7 +288,7 @@ def update_dashboard(selected_brands, selected_models, year_range, price_range, 
         ]
     # Price (Robust filtering: allow values slightly above slider max to capture edge cases)
     # If the user selects the absolute max on slider, include everything above it too (the 2% outliers)
-    if price_range[1] >= max_price:
+    if price_range[1] >= metadata.max_price:
         data_filtered = data_filtered[data_filtered["price"] >= price_range[0]]
     else:
         data_filtered = data_filtered[
@@ -305,7 +297,7 @@ def update_dashboard(selected_brands, selected_models, year_range, price_range, 
             ]
 
     # Mileage (Same logic for outliers)
-    if mileage_range[1] >= max_mileage:
+    if mileage_range[1] >= metadata.max_mileage:
         data_filtered = data_filtered[data_filtered["mileage"] >= mileage_range[0]]
     else:
         data_filtered = data_filtered[
@@ -336,8 +328,8 @@ def update_dashboard(selected_brands, selected_models, year_range, price_range, 
     # NO try-except here - errors will be exposed in console/debug if any
     if not data_filtered.empty:
         avg_price_selection = data_filtered["price"].mean()
-        if global_average_price > 0:
-            price_diff_pct = ((avg_price_selection - global_average_price) / global_average_price) * 100
+        if metadata.average_price > 0:
+            price_diff_pct = ((avg_price_selection - metadata.average_price) / metadata.average_price) * 100
         else:
             price_diff_pct = 0
 

@@ -1,5 +1,8 @@
+import math
+
 import pandas as pd
 from src import constants
+from src.metadata import Metadata
 
 
 class DataLoader:
@@ -39,3 +42,16 @@ class DataLoader:
         if self.data is None:
             self.load_data()
         return self.data["year"].min(), self.data["year"].max()
+
+    def get_metadata(self) -> Metadata:
+        min_year, max_year = self.get_year_range()
+
+        return Metadata(
+            min_year=min_year,
+            max_year=max_year,
+            average_price=self.data["price"].mean(),
+            min_price=math.floor(self.data["price"].min()),
+            max_price=math.ceil(self.data["price"].quantile(0.98)),
+            min_mileage=math.floor(self.data["mileage"].min()),
+            max_mileage=math.ceil(self.data["mileage"].quantile(0.98)),
+        )
