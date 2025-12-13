@@ -1,5 +1,8 @@
+import math
+
 import pandas as pd
 from src import constants
+from src.metadata import Metadata
 
 
 class DataLoader:
@@ -10,36 +13,45 @@ class DataLoader:
         self.data = None
 
     def load_data(self) -> pd.DataFrame:
-        """ Load CSV and perform comprehensive cleaning """
+        """ Loads CSV and perform comprehensive cleaning """
+
         # Load raw data
         self.data = pd.read_csv(self.filepath)
 
-        # 1. Drop rows with missing critical values
-        # We need these columns to be valid for our charts to work correctly
-        # 'make', 'model', 'fuel' -> needed for Sunburst hierarchy
-        # 'hp', 'gear' -> needed for filters and scatter plots
+        # Drop invalid
         critical_columns = ["make", "model", "fuel", "hp", "gear"]
         self.data.dropna(subset=critical_columns, inplace=True)
 
-        # 2. Convert types
-        # Cast year to integer
+        # Convert types
         self.data["year"] = self.data["year"].astype(int)
 
-        # 3. Handle outliers/invalid data
-        # E.g., remove cars with 0 HP or suspicious low price
+        # Handle outliers/invalid data
         self.data = self.data[self.data["price"] > 100]
         self.data = self.data[self.data["hp"] > 0]
 
         return self.data
 
     def get_brands(self):
-        """ Return sorted list of unique car brands """
+        """ Returns sorted list of unique car brands """
         if self.data is None:
             self.load_data()
         return sorted(self.data["make"].unique())
 
     def get_year_range(self):
-        """ Return min and max production year """
+        """ Returns min and max production year """
         if self.data is None:
             self.load_data()
         return self.data["year"].min(), self.data["year"].max()
+
+    def get_metadata(self) -> Metadata:
+        min_year, max_year = self.get_year_range()
+
+        return Metadata(
+            min_year=min_year,
+            max_year=max_year,
+            average_price=self.data["price"].mean(),
+            min_price=math.floor(self.data["price"].min()),
+            max_price=math.ceil(self.data["price"].quantile(0.98)),
+            min_mileage=math.floor(self.data["mileage"].min()),
+            max_mileage=math.ceil(self.data["mileage"].quantile(0.98)),
+        )

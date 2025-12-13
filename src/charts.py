@@ -86,24 +86,20 @@ def create_pie_chart_transmission(data: pd.DataFrame) -> go.Figure:
 
 def create_sunburst_chart(data: pd.DataFrame) -> go.Figure:
     """ 
-    Sunburst Chart: Hierarchical view of the market 
-    Brand -> Model -> Fuel
-    Logic: Groups smaller brands into "Other" to keep chart readable and cover 100% data.
+    Sunburst Chart: Hierarchical view of the market
     """
     if data.empty:
         return go.Figure()
 
-    # Work on a copy to avoid SettingWithCopyWarning
     df_chart = data.copy()
 
-    # 1. Identify Top Brands (e.g., top 10)
     top_n = 10
     top_brands = df_chart["make"].value_counts().nlargest(top_n).index
 
-    # 2. Replace smaller brands with 'Other'
+    # Replace smaller brands
     df_chart.loc[~df_chart["make"].isin(top_brands), "make"] = "Other"
 
-    # 3. For 'Other' brands, hide specific models to avoid clutter
+    # Hide specific models to avoid clutter
     df_chart.loc[df_chart["make"] == "Other", "model"] = "Various"
 
     fig = px.sunburst(
