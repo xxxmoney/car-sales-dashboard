@@ -4,11 +4,12 @@ from src.data_loader import DataLoader
 import src.charts as charts
 from src import constants
 import math
+from src.helpers import create_kpi_card, format_number, create_insight_icon
 
 # --- App Initialization ---
 external_stylesheets = [
     dbc.themes.FLATLY,
-    "https://use.fontawesome.com/releases/v6.4.0/css/all.css"
+    constants.FONT_AWESOME_CDN,
 ]
 app = Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
@@ -18,55 +19,13 @@ loader = DataLoader()
 data = loader.load_data()
 brands = loader.get_brands()
 min_year, max_year = loader.get_year_range()
-GLOBAL_AVG_PRICE = data["price"].mean()
+global_average_price = data["price"].mean()
 
-# Calculate robust ranges for sliders (cutting off extreme outliers)
-# Using 98th percentile prevents 1-2 extreme cars from ruining the slider scale
+# Calculate robust ranges for sliders
 min_price = math.floor(data["price"].min())
 max_price = math.ceil(data["price"].quantile(0.98))
 min_mileage = math.floor(data["mileage"].min())
 max_mileage = math.ceil(data["mileage"].quantile(0.98))
-
-
-# --- Helper Functions ---
-
-def format_number(value):
-    """ Formats large numbers to human-readable string (e.g. 1.2k, 1.5M) """
-    if value >= 1_000_000:
-        return f"{value / 1_000_000:.1f}M"
-    elif value >= 1_000:
-        return f"{value / 1_000:.1f}k"
-    else:
-        return f"{value:.0f}"
-
-
-def create_kpi_card(title, icon_class, id_value, color_hex, tooltip_text):
-    return dbc.Card(
-        dbc.CardBody([
-            html.Div([
-                html.I(className=f"{icon_class} fa-2x mb-3", style={"color": color_hex}),
-            ], className="text-center position-relative"),
-
-            html.I(
-                className="fa-regular fa-circle-question text-muted position-absolute top-0 end-0 m-2",
-                id=f"tooltip-{id_value}",
-                style={"cursor": "pointer", "fontSize": "0.9rem"}
-            ),
-            dbc.Tooltip(tooltip_text, target=f"tooltip-{id_value}", placement="top"),
-
-            html.H6(title, className="text-muted text-center text-uppercase", style={"fontSize": "0.8rem"}),
-            html.H3(id=id_value, className="card-text text-center fw-bold", style={"color": color_hex}),
-        ]),
-        className="shadow-sm border-0 h-100 mb-4 hover-shadow position-relative"
-    )
-
-
-def create_insight_icon(icon_class, bg_color_hex):
-    return html.Div(
-        html.I(className=f"{icon_class} text-white", style={"fontSize": "1.2rem"}),
-        className=f"rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm",
-        style={"minWidth": "45px", "height": "45px", "backgroundColor": bg_color_hex}
-    )
 
 
 # --- Main Layout ---
@@ -377,8 +336,8 @@ def update_dashboard(selected_brands, selected_models, year_range, price_range, 
     # NO try-except here - errors will be exposed in console/debug if any
     if not data_filtered.empty:
         avg_price_selection = data_filtered["price"].mean()
-        if GLOBAL_AVG_PRICE > 0:
-            price_diff_pct = ((avg_price_selection - GLOBAL_AVG_PRICE) / GLOBAL_AVG_PRICE) * 100
+        if global_average_price > 0:
+            price_diff_pct = ((avg_price_selection - global_average_price) / global_average_price) * 100
         else:
             price_diff_pct = 0
 
