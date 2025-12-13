@@ -1,5 +1,4 @@
 import math
-
 import pandas as pd
 from src import constants
 from src.metadata import Metadata
@@ -31,13 +30,13 @@ class DataLoader:
 
         return self.data
 
-    def get_brands(self):
+    def get_brands(self) -> list[str]:
         """ Returns sorted list of unique car brands """
         if self.data is None:
             self.load_data()
         return sorted(self.data["make"].unique())
 
-    def get_year_range(self):
+    def get_year_range(self) -> tuple[int, int]:
         """ Returns min and max production year """
         if self.data is None:
             self.load_data()

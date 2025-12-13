@@ -3,7 +3,7 @@ import dash_bootstrap_components as dbc
 import src.charts as charts
 from src import constants
 from src.data_loader import DataLoader
-from src.helpers import format_number, create_insight_icon, row_data
+from src.helpers import format_number, create_insight_icon
 
 
 def setup(app: Dash, loader: DataLoader):
@@ -20,7 +20,7 @@ def setup(app: Dash, loader: DataLoader):
             Input("filter-brand", "value")
         ]
     )
-    def update_model_options(selected_brands):
+    def update_model_options(selected_brands: list[str]):
         """ Updates model dropdown based on selected brands and resets selection """
         if not selected_brands:
             return [], True, []  # Reset options, disable, clear value
@@ -57,8 +57,15 @@ def setup(app: Dash, loader: DataLoader):
             Input("filter-transmission", "value")
         ]
     )
-    def update_dashboard(selected_brands, selected_models, year_range, price_range, mileage_range, selected_fuels,
-                         selected_gears):
+    def update_dashboard(
+            selected_brands: list[str],
+            selected_models: list[str],
+            year_range: tuple[int, int],
+            price_range: tuple[int, int],
+            mileage_range: tuple[int, int],
+            selected_fuels: list[str],
+            selected_gears: list[str],
+    ):
         metadata = loader.get_metadata()
         data_filtered = data.copy()
 
@@ -66,7 +73,7 @@ def setup(app: Dash, loader: DataLoader):
         data_filtered = data_filtered[
             (data_filtered["year"] >= year_range[0]) &
             (data_filtered["year"] <= year_range[1])
-            ]
+        ]
 
         # Price robust filtering
         if price_range[1] >= metadata.max_price:
@@ -219,7 +226,7 @@ def setup(app: Dash, loader: DataLoader):
             State("car-modal", "is_open")
         ]
     )
-    def toggle_modal(click_data, is_open):
+    def toggle_modal(click_data, is_open: bool):
         ctx = callback_context
         if not ctx.triggered:
             return no_update, no_update
@@ -231,7 +238,7 @@ def setup(app: Dash, loader: DataLoader):
                 car_row = data.loc[car_id]
                 details = dbc.Table([html.Tbody([
                     html.Tr([html.Td(k, className="text-muted"), html.Td(v, className="fw-bold")])
-                    for k, v in row_data(car_row).items()
+                    for k, v in _row_data(car_row).items()
                 ])], borderless=True, size="sm")
                 return True, details
             except:
@@ -240,3 +247,11 @@ def setup(app: Dash, loader: DataLoader):
             return False, no_update
         return is_open, no_update
 
+    def _row_data(row):
+        return {
+            "Make": row["make"], "Model": row["model"],
+            "Price": f"{row['price']:,.0f} €",
+            "Mileage": f"{row['mileage']:,.0f} km",
+            "Year": row["year"], "Power": f"{row['hp']} HP",
+            "Fuel": row["fuel"], "Transmission": row["gear"]
+        }
