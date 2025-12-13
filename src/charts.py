@@ -4,7 +4,7 @@ import pandas as pd
 from src.constants import THEME_TEMPLATE, COLOR_PRIMARY, COLOR_SEQUENCE
 
 
-def _update_layout(fig: go.Figure):
+def _update_layout(fig: go.Figure) -> go.Figure:
     """ Helper to apply common modern styling to all charts """
     fig.update_layout(
         template=THEME_TEMPLATE,

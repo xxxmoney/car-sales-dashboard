@@ -20,7 +20,7 @@ def setup(app: Dash, loader: DataLoader):
             Input("filter-brand", "value")
         ]
     )
-    def update_model_options(selected_brands):
+    def update_model_options(selected_brands: list[str]):
         """ Updates model dropdown based on selected brands and resets selection """
         if not selected_brands:
             return [], True, []  # Reset options, disable, clear value
@@ -57,8 +57,15 @@ def setup(app: Dash, loader: DataLoader):
             Input("filter-transmission", "value")
         ]
     )
-    def update_dashboard(selected_brands, selected_models, year_range, price_range, mileage_range, selected_fuels,
-                         selected_gears):
+    def update_dashboard(
+            selected_brands: list[str],
+            selected_models: list[str],
+            year_range: tuple[int, int],
+            price_range: tuple[int, int],
+            mileage_range: tuple[int, int],
+            selected_fuels: list[str],
+            selected_gears: list[str],
+    ):
         metadata = loader.get_metadata()
         data_filtered = data.copy()
 
@@ -66,7 +73,7 @@ def setup(app: Dash, loader: DataLoader):
         data_filtered = data_filtered[
             (data_filtered["year"] >= year_range[0]) &
             (data_filtered["year"] <= year_range[1])
-            ]
+        ]
 
         # Price robust filtering
         if price_range[1] >= metadata.max_price:
@@ -219,7 +226,7 @@ def setup(app: Dash, loader: DataLoader):
             State("car-modal", "is_open")
         ]
     )
-    def toggle_modal(click_data, is_open):
+    def toggle_modal(click_data, is_open: bool):
         ctx = callback_context
         if not ctx.triggered:
             return no_update, no_update
