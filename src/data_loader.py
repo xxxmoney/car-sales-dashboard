@@ -11,22 +11,18 @@ class DataLoader:
 
     def load_data(self) -> pd.DataFrame:
         """ Load CSV and perform comprehensive cleaning """
+
         # Load raw data
         self.data = pd.read_csv(self.filepath)
 
-        # 1. Drop rows with missing critical values
-        # We need these columns to be valid for our charts to work correctly
-        # 'make', 'model', 'fuel' -> needed for Sunburst hierarchy
-        # 'hp', 'gear' -> needed for filters and scatter plots
+        # Drop invalid
         critical_columns = ["make", "model", "fuel", "hp", "gear"]
         self.data.dropna(subset=critical_columns, inplace=True)
 
-        # 2. Convert types
-        # Cast year to integer
+        # Convert types
         self.data["year"] = self.data["year"].astype(int)
 
-        # 3. Handle outliers/invalid data
-        # E.g., remove cars with 0 HP or suspicious low price
+        # Handle outliers/invalid data
         self.data = self.data[self.data["price"] > 100]
         self.data = self.data[self.data["hp"] > 0]
 
