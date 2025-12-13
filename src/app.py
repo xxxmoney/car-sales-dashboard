@@ -26,15 +26,6 @@ callbacks.setup(app, loader)
 
 # Main layout
 app.layout = html.Div([
-    # Navigation Bar
-    # dbc.NavbarSimple(
-    #     brand="Car Sales Dashboard",
-    #     brand_href="#",
-    #     color="primary",
-    #     dark=True,
-    #     className="mb-4 shadow-sm"
-    # ),
-
     dbc.Navbar(
         dbc.Container(
             [
@@ -174,7 +165,6 @@ app.layout = html.Div([
 
                     # Tabs for graphs
                     dbc.Tabs([
-
                         # General Overview
                         dbc.Tab(label="Market Overview", tab_id="tab-overview", children=[
                             html.Br(),
@@ -213,7 +203,7 @@ app.layout = html.Div([
                             ])
                         ]),
 
-                    ], id="tabs", active_tab="tab-overview", className="mb-3")
+                    ], id="tabs", active_tab="tab-overview", className="my-4")
 
                 ])
             ], xs=12, lg=9)
