@@ -27,12 +27,23 @@ callbacks.setup(app, loader)
 # Main layout
 app.layout = html.Div([
     # Navigation Bar
-    dbc.NavbarSimple(
-        brand="Car Sales Dashboard",
-        brand_href="#",
+    # dbc.NavbarSimple(
+    #     brand="Car Sales Dashboard",
+    #     brand_href="#",
+    #     color="primary",
+    #     dark=True,
+    #     className="mb-4 shadow-sm"
+    # ),
+
+    dbc.Navbar(
+        dbc.Container(
+            [
+                dbc.NavbarBrand("Car Sales Dashboard", href="#"),
+            ],
+            className="justify-content-center"
+        ),
+        className="mb-4",
         color="primary",
-        dark=True,
-        className="mb-4 shadow-sm"
     ),
 
     dbc.Container([
