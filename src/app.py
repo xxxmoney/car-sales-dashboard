@@ -25,7 +25,7 @@ metadata = loader.get_metadata()
 # --- Main Layout ---
 app.layout = html.Div([
 
-    # 1. Navigation Bar
+    # Navigation Bar
     dbc.NavbarSimple(
         brand="AutoScout24 Analytics",
         brand_href="#",
@@ -36,7 +36,7 @@ app.layout = html.Div([
 
     dbc.Container([
 
-        # 2. Header
+        # Header
         dbc.Row([
             dbc.Col([
                 html.H2("Market Overview", className="fw-light"),
@@ -50,10 +50,10 @@ app.layout = html.Div([
             ], width=4, className="d-flex align-items-center justify-content-end")
         ], className="mb-4 align-items-center"),
 
-        # 3. Main Grid
+        # Main Grid
         dbc.Row([
 
-            # --- LEFT PANEL: FILTERS ---
+            # Filters
             dbc.Col([
                 dbc.Card([
                     dbc.CardHeader("Filter Data", className="bg-white fw-bold"),
@@ -97,7 +97,7 @@ app.layout = html.Div([
                             className="mb-3"
                         ),
 
-                        # Mileage Range (Fixed: Only Min/Max Marks)
+                        # Mileage Range
                         html.Label([html.I(className="fa-solid fa-road me-2"), "Mileage Range"], className="fw-bold"),
                         dcc.RangeSlider(
                             id="filter-mileage",
@@ -146,7 +146,7 @@ app.layout = html.Div([
                 ], className="border-0 shadow-sm")
             ], xs=12, lg=3, className="mb-4"),
 
-            # --- RIGHT PANEL: VISUALIZATIONS ---
+            # Graphs (in tabs), etc
             dbc.Col([
                 dcc.Loading(id="loading", type="cube", color=constants.COLOR_PRIMARY, children=[
 
@@ -162,10 +162,10 @@ app.layout = html.Div([
                                                 "Average mileage (km) for the selected cars."), width=4),
                     ]),
 
-                    # TABS Section
+                    # Tabs for graphs
                     dbc.Tabs([
 
-                        # TAB 1: General Overview
+                        # General Overview
                         dbc.Tab(label="Market Overview", tab_id="tab-overview", children=[
                             html.Br(),
                             dbc.Row([
@@ -181,7 +181,7 @@ app.layout = html.Div([
                             ])
                         ]),
 
-                        # TAB 2: Detailed Analysis
+                        # Detailed Analysis
                         dbc.Tab(label="Price & Performance Analysis", tab_id="tab-analysis", children=[
                             html.Br(),
                             dbc.Row([
@@ -194,7 +194,7 @@ app.layout = html.Div([
                             ])
                         ]),
 
-                        # TAB 3: Correlations
+                        # Correlations
                         dbc.Tab(label="Correlations", tab_id="tab-stats", children=[
                             html.Br(),
                             dbc.Row([
@@ -231,14 +231,16 @@ app.layout = html.Div([
 
 # --- Callbacks ---
 
-# 1. Callback for Cascading Model Dropdown
+# Callback for Cascading Model Dropdown
 @app.callback(
     [
         Output("filter-model", "options"),
         Output("filter-model", "disabled"),
         Output("filter-model", "value")  # Added output to clear value
     ],
-    Input("filter-brand", "value")
+    [
+        Input("filter-brand", "value")
+    ]
 )
 def update_model_options(selected_brands):
     """ Updates model dropdown based on selected brands and resets selection """
@@ -254,7 +256,7 @@ def update_model_options(selected_brands):
     return options, False, []
 
 
-# 2. Main Dashboard Callback
+# Main Dashboard Callback
 @app.callback(
     [
         Output("kpi-count", "children"),
@@ -282,14 +284,13 @@ def update_dashboard(selected_brands, selected_models, year_range, price_range, 
                      selected_gears):
     data_filtered = data.copy()
 
-    # Apply Filters
-    # Year
+    # Year filter
     data_filtered = data_filtered[
         (data_filtered["year"] >= year_range[0]) &
         (data_filtered["year"] <= year_range[1])
         ]
-    # Price (Robust filtering: allow values slightly above slider max to capture edge cases)
-    # If the user selects the absolute max on slider, include everything above it too (the 2% outliers)
+
+    # Price robust filtering
     if price_range[1] >= metadata.max_price:
         data_filtered = data_filtered[data_filtered["price"] >= price_range[0]]
     else:
@@ -298,7 +299,7 @@ def update_dashboard(selected_brands, selected_models, year_range, price_range, 
             (data_filtered["price"] <= price_range[1])
             ]
 
-    # Mileage (Same logic for outliers)
+    # Mileage robust filtering
     if mileage_range[1] >= metadata.max_mileage:
         data_filtered = data_filtered[data_filtered["mileage"] >= mileage_range[0]]
     else:
@@ -326,8 +327,7 @@ def update_dashboard(selected_brands, selected_models, year_range, price_range, 
     kpi_price = f"{format_number(data_filtered['price'].mean())} €"
     kpi_mileage = f"{format_number(data_filtered['mileage'].mean())} km"
 
-    # --- Smart Insight Logic ---
-    # NO try-except here - errors will be exposed in console/debug if any
+    # Insights
     if not data_filtered.empty:
         avg_price_selection = data_filtered["price"].mean()
         if metadata.average_price > 0:
@@ -339,7 +339,7 @@ def update_dashboard(selected_brands, selected_models, year_range, price_range, 
         price_desc = "above market avg" if price_diff_pct > 0 else "below market avg"
         price_color = constants.COLOR_DANGER if price_diff_pct > 0 else constants.COLOR_ACCENT
 
-        # Case 1: Single Brand Selected
+        # Single Brand Selected
         if selected_brands and len(selected_brands) == 1:
             # If models are selected, show specific model info
             if selected_models and len(selected_models) == 1:
@@ -374,7 +374,7 @@ def update_dashboard(selected_brands, selected_models, year_range, price_range, 
             icon = "fa-solid fa-car-side"
             icon_color = constants.COLOR_PRIMARY
 
-        # Case 2: Multiple Brands or Global
+        # Or multiple brands or global
         else:
             if not data_filtered["make"].dropna().empty:
                 top_brand = data_filtered["make"].value_counts().idxmax()
@@ -382,8 +382,6 @@ def update_dashboard(selected_brands, selected_models, year_range, price_range, 
                 share = (top_count / len(data_filtered)) * 100
             else:
                 top_brand, top_count, share = "N/A", 0, 0
-
-            title_text = "Multi-Brand Analysis" if selected_brands else "Global Market Trends"
 
             insight_content = [
                 html.P([
@@ -433,9 +431,17 @@ def update_dashboard(selected_brands, selected_models, year_range, price_range, 
 
 
 @app.callback(
-    [Output("car-modal", "is_open"), Output("modal-body", "children")],
-    [Input("graph-scatter-price-mileage", "clickData"), Input("close-modal", "n_clicks")],
-    [State("car-modal", "is_open")]
+    [
+        Output("car-modal", "is_open"),
+        Output("modal-body", "children")
+    ],
+    [
+        Input("graph-scatter-price-mileage", "clickData"),
+        Input("close-modal", "n_clicks")
+    ],
+    [
+        State("car-modal", "is_open")
+    ]
 )
 def toggle_modal(click_data, n_clicks, is_open):
     ctx = callback_context
