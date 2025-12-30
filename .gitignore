@@ -1,7 +1,4 @@
 
-# Custom input data for project
-data/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
